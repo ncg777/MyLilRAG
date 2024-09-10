@@ -78,7 +78,21 @@ public class MyLilRAG
 	    System.out.println("Ingested and archived: " + f.getPath());
 	}
     }
-    
+    public static String formatAnswer(String answer) {
+	final int lineLength = 80;
+	final String sepchars = "\"'+-@#%*";
+	Pattern p = Pattern.compile(
+		"(\\b?.{1," + (lineLength-2) + "}[^"+sepchars + "]\\b\\W?)" + "|"+
+		"(\\b?.{1," + (lineLength-1) + "}\\b\\W?)"
+		);
+        Matcher m = p.matcher(answer);
+        StringBuilder sbans = new StringBuilder();
+        
+        while(m.find()) {
+        	sbans.append(m.group().trim()+"\n");
+        }
+        return sbans.toString();
+    }
     public static void main( String[] args ) throws IOException
     {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
@@ -142,16 +156,10 @@ public class MyLilRAG
             if(input.isEmpty()) break;
             Result<String> answer = ass.chat(input);
             
-            Pattern p = Pattern.compile("\\b.{1," + (80-1) + "}\\b[\\W\"\'\\[\\<]?");
-            Matcher m = p.matcher(answer.content());
-            StringBuilder sbans = new StringBuilder();
             
-            while(m.find()) {
-            	sbans.append(m.group()+"\n");
-            }
             
             System.out.println("\nAI ANSWER:");
-            System.out.println(sbans.toString());
+            System.out.println(formatAnswer(answer.content()));
         } while(true);
     }
 }

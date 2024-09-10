@@ -29,8 +29,10 @@ public class MyLilRAGTests
     /**
      * Rigourous Test :-)
      */
-    public void testApp()
+    public void testFormatAnswer()
     {
-        assertTrue( true );
+	String result = MyLilRAG.formatAnswer("abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg \"abcdefg\"");
+	String expected = "abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg\n\"abcdefg\"\n";
+        assertEquals(expected, result);
     }
 }
