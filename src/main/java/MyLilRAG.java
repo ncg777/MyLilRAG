@@ -54,7 +54,12 @@ public class MyLilRAG
     
     private static void ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if(f.isDirectory()) {
-	    if(!f.equals(toIngest)) System.out.println("Ingesting directory: " + f.getPath().substring(toIngest.getPath().length()));
+	    if(!f.equals(toIngest)) {
+		System.out.println("Ingesting directory: " + f.getPath().substring(toIngest.getPath().length()));
+	    } else {
+		System.out.println("Ingesting new documents...");
+	    }
+	    
 	    if(!f.equals(toIngest)) {
 		File newDir = new File(ingested.getPath() + f.getPath().substring(toIngest.getPath().length()));
 		if(!newDir.exists()) newDir.mkdir();
@@ -64,7 +69,11 @@ public class MyLilRAG
 	    }
 	    String path = f.getPath();
 	    f.delete();
-	    System.out.println("Ingested directory: " + path.substring(toIngest.getPath().length()));
+	    if(!path.equals(toIngest.getPath())) {
+		System.out.println("Ingested directory: " + path.substring(toIngest.getPath().length()));
+	    } else {
+		System.out.println("Done ingesting new documents.");
+	    }
 	} else {
 	    System.out.println("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
 	    
