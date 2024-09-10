@@ -70,7 +70,7 @@ public class MyLilRAG
 	    String path = f.getPath();
 	    if(!f.equals(toIngest)) f.delete();
 	    if(!path.equals(toIngest.getPath())) {
-		System.out.println("Ingested directory: " + path.substring(toIngest.getPath().length()));
+		System.out.println("Ingested and archived directory: " + path.substring(toIngest.getPath().length()));
 	    } else {
 		System.out.println("Done ingesting new documents.");
 	    }
