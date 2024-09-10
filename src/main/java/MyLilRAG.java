@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -90,19 +88,29 @@ public class MyLilRAG
     }
     public static String formatAnswer(String answer) {
 	final int lineLength = 80;
-	final String sepchars = "\"'+-@#%*\\(\\[";
-	Pattern p = Pattern.compile(
-		"(\\b?.{1," + (lineLength-2) + "}[^"+sepchars + "]\\b\\W?)" + "|"+
-		"(\\b?.{1," + (lineLength-1) + "}\\b\\W?)"
-		);
-        Matcher m = p.matcher(answer);
+	final String openchars = "\"'+-@#%*\\(\\[";
+	final String closechars = "\"'*\\)\\]";
+	
         StringBuilder sbans = new StringBuilder();
-        
-        while(m.find()) {
-        	sbans.append(m.group().trim()+"\n");
+        String str = answer;
+        while(!str.isEmpty()) {
+            int search = Math.min(lineLength-1, str.length()-1);
+            String c;
+            String next;
+            do {
+        	c = String.valueOf(str.charAt(search));
+                next = str.length() > search+1 ? String.valueOf(str.charAt(search+1)) : null;
+                if(search > 0 && (openchars.contains(c) || !(next == null || (next.isBlank() && !closechars.contains(next))))) {
+                    search--;
+                } else {break;}
+            } while(true);
+            
+            sbans.append(str.substring(0,search+1).trim()+"\n");
+            str = str.substring(search+1);
         }
         return sbans.toString();
     }
+    
     public static void main( String[] args ) throws IOException
     {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
