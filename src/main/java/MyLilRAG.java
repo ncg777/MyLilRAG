@@ -83,8 +83,8 @@ public class MyLilRAG
     {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
 	//OpenAiChatModel model = b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
-	OpenAiChatModel model = b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).build();
-	//OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile").apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).build();
+	//OpenAiChatModel model = b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).build();
+	OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile").apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).build();
 	//System.out.println(model.generate("Hello!"));
         
 	OpenAiEmbeddingModelBuilder b2 = new OpenAiEmbeddingModelBuilder();
@@ -142,7 +142,7 @@ public class MyLilRAG
             if(input.isEmpty()) break;
             Result<String> answer = ass.chat(input);
             
-            Pattern p = Pattern.compile("\\b.{1," + (80-1) + "}\\b\\W?");
+            Pattern p = Pattern.compile("\\b.{1," + (80-1) + "}\\b[\\W\"\'\\[\\<]?");
             Matcher m = p.matcher(answer.content());
             StringBuilder sbans = new StringBuilder();
             
