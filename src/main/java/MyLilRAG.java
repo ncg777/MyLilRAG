@@ -49,13 +49,12 @@ public class MyLilRAG
     private static void ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if(!toIngest.exists()) toIngest.mkdir();
         if(!ingested.exists()) ingested.mkdir();
-        
-	ingest(toIngest, ingestor,parser,splitter);
+        if(toIngest.listFiles().length>0) ingest(toIngest, ingestor,parser,splitter);
     }
     
     private static void ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if(f.isDirectory()) {
-	    System.out.println("Ingesting directory: " + f.getPath());
+	    if(!f.equals(toIngest)) System.out.println("Ingesting directory: " + f.getPath().substring(toIngest.getPath().length()));
 	    if(!f.equals(toIngest)) {
 		File newDir = new File(ingested.getPath() + f.getPath().substring(toIngest.getPath().length()));
 		if(!newDir.exists()) newDir.mkdir();
@@ -63,9 +62,11 @@ public class MyLilRAG
 	    for(File s : f.listFiles()) {
 		ingest(s,ingestor,parser,splitter);
 	    }
-	    System.out.println("Ingested directory: " + f.getPath());
+	    String path = f.getPath();
+	    f.delete();
+	    System.out.println("Ingested directory: " + path.substring(toIngest.getPath().length()));
 	} else {
-	    System.out.println("Ingesting file: " + f.getPath());
+	    System.out.println("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
 	    
 	    Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
 	    List<TextSegment> segments = splitter.split(doc);
@@ -75,7 +76,7 @@ public class MyLilRAG
 	    
 	    String p = ingested.getPath() + f.getPath().substring(toIngest.getPath().length());
 	    f.renameTo(new File(p));
-	    System.out.println("Ingested and archived: " + f.getPath());
+	    System.out.println("Ingested and archived: " + f.getPath().substring(toIngest.getPath().length()));
 	}
     }
     public static String formatAnswer(String answer) {
