@@ -68,7 +68,7 @@ public class MyLilRAG
 		ingest(s,ingestor,parser,splitter);
 	    }
 	    String path = f.getPath();
-	    f.delete();
+	    if(!f.equals(toIngest)) f.delete();
 	    if(!path.equals(toIngest.getPath())) {
 		System.out.println("Ingested directory: " + path.substring(toIngest.getPath().length()));
 	    } else {
