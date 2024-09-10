@@ -166,8 +166,6 @@ public class MyLilRAG
             if(input.isEmpty()) break;
             Result<String> answer = ass.chat(input);
             
-            
-            
             System.out.println("\nAI ANSWER:");
             System.out.println(formatAnswer(answer.content()));
         } while(true);
