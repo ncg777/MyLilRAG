@@ -3,7 +3,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -44,6 +43,32 @@ public class MyLilRAG
     interface Assistant {
 	Result<String> chat(String userMessage);
     }
+    private static String toIngest = "./toIngest";
+    private static String ingested = "./ingested";
+    
+    private static void ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
+	ingest(new File(toIngest), ingestor,parser,splitter);
+    }
+    
+    private static void ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
+	if(f.isDirectory()) {
+	    for(File s : f.listFiles()) {
+		ingest(s,ingestor,parser,splitter);
+	    }
+	    System.out.println("Ingested directory: " + f.getPath());
+	} else {
+	    System.out.println("Ingesting: " + f.getPath());
+	    Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
+	    List<TextSegment> segments = splitter.split(doc);
+	    for(TextSegment s : segments) {
+	        ingestor.ingest(Document.from(s.text(), s.metadata()));
+	    }
+	    
+	    String p = ingested + f.getPath().substring(toIngest.length());
+	    f.renameTo(new File(p));
+	    System.out.println("Ingested and archived: " + f.getPath());
+	}
+    }
     
     public static void main( String[] args ) throws IOException
     {
@@ -62,10 +87,6 @@ public class MyLilRAG
         	.dimension(emodel.dimension())
         	.indexName("ncg777.store.nomic")
         	.build();
-        
-        String toIngest = "./toIngest";
-        String ingested = "./ingested";
-        
         {
             File f = new File(toIngest);
             if(!f.exists()) {
@@ -85,20 +106,8 @@ public class MyLilRAG
         	.build();
         
         DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create(); 
-    
-        List<Document> docs = FileSystemDocumentLoader.loadDocumentsRecursively(toIngest, parser);
-        List<TextSegment> segments = splitter.splitAll(docs);
-        for(TextSegment s : segments) {
-            ingestor.ingest(Document.from(s.text(), s.metadata()));
-        }
-        
-        {
-            File d = new File(toIngest);
-            for(File s : d.listFiles()) {
-                String p = Paths.get(ingested, s.getName()).toString();
-                s.renameTo(new File(p));
-            }
-        }
+       
+        ingest(ingestor, parser, splitter);
     
         EmbeddingStoreContentRetriever embeddingStoreContentRetriever = 
         	EmbeddingStoreContentRetriever.builder().embeddingModel(emodel).embeddingStore(store).build();
