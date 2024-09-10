@@ -31,8 +31,8 @@ public class MyLilRAGTests
      */
     public void testFormatAnswer()
     {
-	String result = MyLilRAG.formatAnswer("abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg \"abcdefg\"");
-	String expected = "abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg\n\"abcdefg\"\n";
+	String result = MyLilRAG.formatAnswer("abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg (abcdefg)");
+	String expected = "abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg\n(abcdefg)\n";
         assertEquals(expected, result);
     }
 }

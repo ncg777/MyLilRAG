@@ -80,7 +80,7 @@ public class MyLilRAG
     }
     public static String formatAnswer(String answer) {
 	final int lineLength = 80;
-	final String sepchars = "\"'+-@#%*";
+	final String sepchars = "\"'+-@#%*\\(\\[";
 	Pattern p = Pattern.compile(
 		"(\\b?.{1," + (lineLength-2) + "}[^"+sepchars + "]\\b\\W?)" + "|"+
 		"(\\b?.{1," + (lineLength-1) + "}\\b\\W?)"
