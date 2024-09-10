@@ -43,28 +43,37 @@ public class MyLilRAG
     interface Assistant {
 	Result<String> chat(String userMessage);
     }
-    private static String toIngest = "./toIngest";
-    private static String ingested = "./ingested";
+    private static File toIngest = new File("./toIngest");
+    private static File ingested = new File("./ingested");
     
     private static void ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
-	ingest(new File(toIngest), ingestor,parser,splitter);
+	if(!toIngest.exists()) toIngest.mkdir();
+        if(!ingested.exists()) ingested.mkdir();
+        
+	ingest(toIngest, ingestor,parser,splitter);
     }
     
     private static void ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if(f.isDirectory()) {
+	    System.out.println("Ingesting directory: " + f.getPath());
+	    if(!f.equals(toIngest)) {
+		File newDir = new File(ingested.getPath() + f.getPath().substring(toIngest.getPath().length()));
+		if(!newDir.exists()) newDir.mkdir();
+	    }
 	    for(File s : f.listFiles()) {
 		ingest(s,ingestor,parser,splitter);
 	    }
 	    System.out.println("Ingested directory: " + f.getPath());
 	} else {
-	    System.out.println("Ingesting: " + f.getPath());
+	    System.out.println("Ingesting file: " + f.getPath());
+	    
 	    Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
 	    List<TextSegment> segments = splitter.split(doc);
 	    for(TextSegment s : segments) {
 	        ingestor.ingest(Document.from(s.text(), s.metadata()));
 	    }
 	    
-	    String p = ingested + f.getPath().substring(toIngest.length());
+	    String p = ingested.getPath() + f.getPath().substring(toIngest.getPath().length());
 	    f.renameTo(new File(p));
 	    System.out.println("Ingested and archived: " + f.getPath());
 	}
@@ -87,16 +96,6 @@ public class MyLilRAG
         	.dimension(emodel.dimension())
         	.indexName("ncg777.store.nomic")
         	.build();
-        {
-            File f = new File(toIngest);
-            if(!f.exists()) {
-        	f.mkdir();
-            }
-            f = new File(ingested);
-            if(!f.exists()) {
-        	f.mkdir();
-            }
-        }
         
         DocumentSplitter splitter = (new RecursiveDocumentSplitterFactory()).create();
         
