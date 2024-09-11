@@ -106,7 +106,7 @@ public class MyLilRAG {
 
 	for (int i = 0; i < lines.size(); i++) {
 	    String str = lines.get(i);
-
+	    if(str.isBlank() || str.isEmpty()) continue;
 	    int tabcount = 0;
 	    while (str.charAt(tabcount) == '\t')
 		tabcount++;
@@ -126,7 +126,36 @@ public class MyLilRAG {
 	    }
 
 	    Character c;
+	    int search = Math.min(str.length() - 1, lineLength - 1);
 	    boolean reeval = false;
+	    c = str.charAt(search);
+
+	    while (search > -1 && !String.valueOf(c).isBlank()) {
+		search--;
+		if (search >= 0)
+		    c = str.charAt(search);
+	    }
+
+	    if (search >= 0) {
+		lines.remove(i);
+		lines.add(i, str.substring(0, search + 1));
+		lines.add(i + 1, str.substring(search + 1));
+		reeval = true;
+	    } else {
+		int x = 0;
+		String s = str;
+		lines.remove(i);
+		while (s.length() > 0) {
+		    boolean isLast = s.length() <= lineLength;
+		    lines.add(i + (x++), s.substring(0, Math.min(lineLength, s.length())));
+		    if (!isLast) {
+			s = s.substring(lineLength);
+		    } else {
+			s = "";
+		    }
+		}
+	    }
+	    if(reeval) break;
 	    for (String d : delimiters) {
 		int first = str.indexOf(d.charAt(0));
 		int last = str.lastIndexOf(d.charAt(1));
@@ -152,37 +181,9 @@ public class MyLilRAG {
 		if (reeval)
 		    break;
 		
-		int search = Math.min(str.length()-1, lineLength-1);
-
-		c = str.charAt(search);
-		
-		while(search > -1 && !String.valueOf(c).isBlank()) {
-		    search--;
-		    if(search >=0) c = str.charAt(search);
-		}
-		
-		if(search >= 0) {
-		    lines.remove(i);
-		    lines.add(i, str.substring(0, search + 1));
-		    lines.add(i + 1, str.substring(search + 1));		    
-		} else {
-		    int x = 0;
-		    String s = str;
-		    lines.remove(i);
-		    while(s.length() > 0) {
-			boolean isLast = s.length() <= lineLength;
-			lines.add(i+(x++), s.substring(0, Math.min(lineLength, s.length())));
-			if(!isLast) {
-			    s = s.substring(lineLength);
-			} else {
-			    s = "";
-			}
-		    }
-		}
-		reeval = true;
-
-		break;
 	    }
+	    
+
 	    if (reeval)
 		i--;
 	}
