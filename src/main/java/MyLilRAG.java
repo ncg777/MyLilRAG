@@ -4,10 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
-
-import com.google.common.base.Joiner;
 
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -35,10 +32,7 @@ import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 
-/**
- * Hello world!
- *
- */
+
 public class MyLilRAG {
     interface Assistant {
 	Result<String> chat(String userMessage);
@@ -96,120 +90,7 @@ public class MyLilRAG {
 	}
     }
 
-    final static int lineLength = 80;
-    final static String[] delimiters = { "{}", "()", "[]", "\"\"", "''", "**" };
-    final static String tab2 = "  ";
-    final static String tab2Regex = "\\s\\s";
-    final static String tab4 = tab2+tab2;
-    final static String tab4Regex = tab2Regex+tab2Regex;
-    public static String formatAnswer(String answer) {
-	ArrayList<String> lines = new ArrayList<String>(List.of(answer.split("\n")));
-	String tab = tab2;
-	String tabRegex = tab2Regex;
-	boolean isFirstIndentation = true;
-	for (int i = 0; i < lines.size(); i++) {
-	    String str = lines.get(i);
-	    if(str.isBlank() || str.isEmpty()) continue;
-	    int tabcount = 0;
-	    
-	    while (str.charAt(tabcount) == '\t') {
-		tabcount++;
-		str = str.substring(1);
-	    }
-		
-	    while (str.length() >= ((tabcount + 1) * tab.length())
-		    && str.substring(tabcount * tab.length(), (tabcount + 1) * tab.length()).equals(tab)) {
-		tabcount++;
-		str = str.substring(tab.length());
-	    }
-	    
-	    if(isFirstIndentation && tabcount%2==0) {
-		tabcount = tabcount/2;
-		tab = tab4;
-		tabRegex = tab4Regex;
-	    }
-	    
-	    if(tabcount > 0) {
-		isFirstIndentation = false;
-	    }
-	    String indentation = "";
-	    for (int j = 0; j < tabcount; j++)
-		indentation += tab;
-
-	    str = str.replaceAll("(\t)||(" + tabRegex + ")", "").trim();
-
-	    
-	    str = indentation + str;
-	    
-	    if (str.length() <= lineLength) {
-		lines.set(i, indentation + str.trim());
-		continue;
-	    }
-	    Character c;
-	    int search = Math.min(str.length() - 1, lineLength - 1);
-	    boolean reeval = false;
-	    c = str.charAt(search);
-
-	    while (search > -1 && !String.valueOf(c).isBlank()) {
-		search--;
-		if (search >= 0)
-		    c = str.charAt(search);
-	    }
-
-	    if (search >= 0) {
-		lines.remove(i);
-		lines.add(i, str.substring(0, search + 1));
-		lines.add(i + 1, str.substring(search + 1));
-		reeval = true;
-	    } else {
-		int x = 0;
-		String s = str;
-		lines.remove(i);
-		while (s.length() > 0) {
-		    boolean isLast = s.length() <= lineLength;
-		    lines.add(i + (x++), s.substring(0, Math.min(lineLength, s.length())));
-		    if (!isLast) {
-			s = s.substring(lineLength);
-		    } else {
-			s = "";
-		    }
-		}
-	    }
-	    if (!reeval) {
-		for (String d : delimiters) {
-		    int first = str.indexOf(d.charAt(0));
-		    int last = str.lastIndexOf(d.charAt(1));
-
-		    boolean matched = first > -1 && last > -1;
-		    if (matched) {
-			String trailing = str.substring(first);
-			if ((indentation.length() + trailing.length()) > lineLength) {
-			    lines.remove(i);
-			    lines.add(i, str.substring(0, first));
-			    lines.add(i + 1, indentation + String.valueOf(d.charAt(0)));
-			    lines.add(i + 2, indentation + tab + str.substring(first + 1, last));
-			    lines.add(i + 3, indentation + String.valueOf(d.charAt(1)));
-			    lines.add(i + 4, indentation + str.substring(last + 1));
-			    reeval = true;
-			} else {
-			    lines.remove(i);
-			    lines.add(i, str.substring(0, first));
-			    lines.add(i + 1, indentation + trailing);
-			}
-		    }
-
-		    if (reeval)
-			break;
-		}
-	    }	    	    
-
-	    if (reeval)
-		i--;
-	}
-
-	return Joiner.on("\n").join(lines.stream().map((s) -> s.trim()).toList());
-    }
-
+        
     public static void main(String[] args) throws IOException {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
 	// OpenAiChatModel model =
@@ -265,7 +146,7 @@ public class MyLilRAG {
 	    Result<String> answer = ass.chat(input);
 
 	    System.out.println("\nAI ANSWER:");
-	    System.out.println(formatAnswer(answer.content()));
+	    System.out.println(Formatter.formatAnswer(answer.content()));
 	} while (true);
     }
 }
