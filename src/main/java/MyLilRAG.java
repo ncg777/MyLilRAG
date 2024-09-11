@@ -155,34 +155,33 @@ public class MyLilRAG {
 		    }
 		}
 	    }
-	    if(reeval) break;
-	    for (String d : delimiters) {
-		int first = str.indexOf(d.charAt(0));
-		int last = str.lastIndexOf(d.charAt(1));
+	    if (!reeval) {
+		for (String d : delimiters) {
+		    int first = str.indexOf(d.charAt(0));
+		    int last = str.lastIndexOf(d.charAt(1));
 
-		boolean matched = first > -1 && last > -1;
-		if (matched) {
-		    String trailing = str.substring(first);
-		    if (trailing.length() > lineLength) {
-			lines.remove(i);
-			lines.add(i, indentation + str.substring(0, first));
-			lines.add(i + 1, String.valueOf(d.charAt(0)));
-			lines.add(i + 2, indentation + tab + str.substring(first + 1, last));
-			lines.add(i + 3, String.valueOf(d.charAt(1)));
-			lines.add(i + 4, indentation + str.substring(last + 1));
-		    } else {
-			lines.remove(i);
-			lines.add(i, indentation + str.substring(0, first));
-			lines.add(i + 1, indentation + str.substring(first));
+		    boolean matched = first > -1 && last > -1;
+		    if (matched) {
+			String trailing = str.substring(first);
+			if (trailing.length() > lineLength) {
+			    lines.remove(i);
+			    lines.add(i, indentation + str.substring(0, first));
+			    lines.add(i + 1, String.valueOf(d.charAt(0)));
+			    lines.add(i + 2, indentation + tab + str.substring(first + 1, last));
+			    lines.add(i + 3, String.valueOf(d.charAt(1)));
+			    lines.add(i + 4, indentation + str.substring(last + 1));
+			} else {
+			    lines.remove(i);
+			    lines.add(i, indentation + str.substring(0, first));
+			    lines.add(i + 1, indentation + str.substring(first));
+			}
 		    }
-		}
 
-		reeval = matched;
-		if (reeval)
-		    break;
-		
-	    }
-	    
+		    reeval = matched;
+		    if (reeval)
+			break;
+		}
+	    }	    	    
 
 	    if (reeval)
 		i--;
