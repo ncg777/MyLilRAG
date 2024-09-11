@@ -23,16 +23,16 @@ public class FormatterTests extends TestCase {
         
         result = Formatter.formatAnswer("skhfkh slsg slkjglsjdlg sldjglsjglk sljglsjg sldjglsjdlg sldjglsdgl {abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefgh}");
 	expected =	               "skhfkh slsg slkjglsjdlg sldjglsjglk sljglsjg sldjglsjdlg sldjglsdgl {\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefg\n"
-		+ "    abcdefgh\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefg\n"
+		+ "  abcdefgh\n"
 		+ "}";
         assertEquals(expected, result);
         

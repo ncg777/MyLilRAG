@@ -8,7 +8,6 @@ public class Formatter {
     final static String[] parentheseses = { "{}", "()", "[]" };
     final static Character[] potentialDelimiters = {' ', ';', ','};
     final static String tab2 = "  ";
-    final static String tab4 = tab2+tab2;
     public static String formatAnswer(String answer) {
 	ArrayList<String> lines = new ArrayList<String>(List.of(answer.split("\n")));
 	String tab = tab2;
@@ -29,17 +28,14 @@ public class Formatter {
 		str = str.substring(tab.length());
 	    }
 	    
-	    if(isFirstIndentation && tabcount%2==0) {
+	    if(isFirstIndentation && tabcount>2) {
 		tabcount = tabcount/2;
-		tab = tab4;
 	    }
 	    
 	    if(tabcount > 0) {
 		isFirstIndentation = false;
 	    }
-	    String indentation = "";
-	    for (int j = 0; j < tabcount; j++)
-		indentation += tab;
+	    String indentation = tab.repeat(tabcount);
 
 	    str = indentation + str.stripIndent().trim();
 
@@ -75,14 +71,21 @@ public class Formatter {
 			    lines.add(current++, indentation + String.valueOf(d.charAt(0)));
 			    if(!startsWithParenthesis) {
 				String[] splitted = {innerBody};
+				Character lastChar = innerBody.isBlank() ? null : innerBody.charAt(innerBody.length()-1);
 				Character ch = null;
-				for(int j=0;j<potentialDelimiters.length;j++) {
-				    String[] candidate = innerBody.split(String.valueOf(potentialDelimiters[j]));
-				    if(candidate.length > splitted.length) {
-					splitted = candidate;
-					ch = potentialDelimiters[j];
-				    }
+				if(lastChar.equals(';')) {
+				    splitted = innerBody.split(";");
+				    ch = ';';
+				} else {
+				    for (int j = 0; j < potentialDelimiters.length; j++) {
+					String[] candidate = innerBody.split(String.valueOf(potentialDelimiters[j]));
+					if (candidate.length > splitted.length) {
+					    splitted = candidate;
+					    ch = potentialDelimiters[j];
+					}
+				    }    
 				}
+				
 				for(int j=0;j<splitted.length;j++) {
 				    String suffix = ch == null ? "" : ch.toString();
 				    if(j == splitted.length-1) {
