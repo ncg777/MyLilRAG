@@ -96,12 +96,12 @@ public class MyLilRAG {
 	}
     }
 
+    final static int lineLength = 80;
+    final static String[] delimiters = { "{}", "()", "[]", "\"\"", "''", "**" };
+    final static String tab = "  ";
+    final static String tabRegex = "\\s\\s";
+
     public static String formatAnswer(String answer) {
-	final int lineLength = 80;
-	final String[] delimiters = { "{}", "()", "[]", "\"\"", "''", "**" };
-	final String tab = "  ";
-	final String tabRegex = "\\s\\s";
-	StringBuilder sbans = new StringBuilder();
 	ArrayList<String> lines = new ArrayList<String>(List.of(answer.split("\n")));
 
 	for (int i = 0; i < lines.size(); i++) {
@@ -121,7 +121,7 @@ public class MyLilRAG {
 	    str = str.replaceAll("(\t)||(" + tabRegex + ")", "").trim();
 
 	    if (str.length() <= lineLength) {
-		sbans.append(indentation + str.trim() + (i < lines.size() - 1 ? "\n" : ""));
+		lines.set(i, indentation + str.trim());
 		continue;
 	    }
 
