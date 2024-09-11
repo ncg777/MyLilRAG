@@ -4,7 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+
+import com.google.common.base.Joiner;
 
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
@@ -36,146 +39,213 @@ import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
  * Hello world!
  *
  */
-public class MyLilRAG 
-{
+public class MyLilRAG {
     interface Assistant {
 	Result<String> chat(String userMessage);
     }
+
     private static File toIngest = new File("./toIngest");
     private static File ingested = new File("./ingested");
-    
+
     private static void ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
-	if(!toIngest.exists()) toIngest.mkdir();
-        if(!ingested.exists()) ingested.mkdir();
-        if(toIngest.listFiles().length>0) ingest(toIngest, ingestor,parser,splitter);
+	if (!toIngest.exists())
+	    toIngest.mkdir();
+	if (!ingested.exists())
+	    ingested.mkdir();
+	if (toIngest.listFiles().length > 0)
+	    ingest(toIngest, ingestor, parser, splitter);
     }
-    
-    private static void ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
-	if(f.isDirectory()) {
-	    if(!f.equals(toIngest)) {
+
+    private static void ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser,
+	    DocumentSplitter splitter) {
+	if (f.isDirectory()) {
+	    if (!f.equals(toIngest)) {
 		System.out.println("Ingesting directory: " + f.getPath().substring(toIngest.getPath().length()));
 	    } else {
 		System.out.println("Ingesting new documents...");
 	    }
-	    
-	    if(!f.equals(toIngest)) {
+
+	    if (!f.equals(toIngest)) {
 		File newDir = new File(ingested.getPath() + f.getPath().substring(toIngest.getPath().length()));
-		if(!newDir.exists()) newDir.mkdir();
+		if (!newDir.exists())
+		    newDir.mkdir();
 	    }
-	    for(File s : f.listFiles()) {
-		ingest(s,ingestor,parser,splitter);
+	    for (File s : f.listFiles()) {
+		ingest(s, ingestor, parser, splitter);
 	    }
 	    String path = f.getPath();
-	    if(!f.equals(toIngest)) f.delete();
-	    if(!path.equals(toIngest.getPath())) {
+	    if (!f.equals(toIngest))
+		f.delete();
+	    if (!path.equals(toIngest.getPath())) {
 		System.out.println("Ingested and archived directory: " + path.substring(toIngest.getPath().length()));
 	    } else {
 		System.out.println("Done ingesting new documents.");
 	    }
 	} else {
 	    System.out.println("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
-	    
+
 	    Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
 	    List<TextSegment> segments = splitter.split(doc);
-	    for(TextSegment s : segments) {
-	        ingestor.ingest(Document.from(s.text(), s.metadata()));
+	    for (TextSegment s : segments) {
+		ingestor.ingest(Document.from(s.text(), s.metadata()));
 	    }
-	    
+
 	    String p = ingested.getPath() + f.getPath().substring(toIngest.getPath().length());
 	    f.renameTo(new File(p));
 	    System.out.println("Ingested and archived: " + f.getPath().substring(toIngest.getPath().length()));
 	}
     }
+
     public static String formatAnswer(String answer) {
 	final int lineLength = 80;
-	final String openchars = "\"'+-@#%*\\(\\[";
-	final String closechars = "\"'*\\)\\]";
-	
-        StringBuilder sbans = new StringBuilder();
-        String str = answer;
-        while(!str.isEmpty()) {
-            int search = Math.min(lineLength-1, str.length()-1);
-            String c;
-            String next;
-            do {
-        	c = String.valueOf(str.charAt(search));
-                next = str.length() > search+1 ? String.valueOf(str.charAt(search+1)) : null;
-                if(search > 0 && (openchars.contains(c) || !(next == null || (next.isBlank() && !closechars.contains(next))))) {
-                    search--;
-                } else {break;}
-            } while(true);
-            
-            sbans.append(str.substring(0,search+1).trim()+"\n");
-            str = str.substring(search+1);
-        }
-        return sbans.toString();
+	final String[] delimiters = { "{}", "()", "[]", "\"\"", "''", "**" };
+	final String tab = "  ";
+	final String tabRegex = "\\s\\s";
+	StringBuilder sbans = new StringBuilder();
+	ArrayList<String> lines = new ArrayList<String>(List.of(answer.split("\n")));
+
+	for (int i = 0; i < lines.size(); i++) {
+	    String str = lines.get(i);
+
+	    int tabcount = 0;
+	    while (str.charAt(tabcount) == '\t')
+		tabcount++;
+	    while (str.length() >= ((tabcount + 1) * tab.length())
+		    && str.substring(tabcount * tab.length(), (tabcount + 1) * tab.length()).equals(tab)) {
+		tabcount++;
+	    }
+	    String indentation = "";
+	    for (int j = 0; j < tabcount; j++)
+		indentation += tab;
+
+	    str = str.replaceAll("(\t)||(" + tabRegex + ")", "").trim();
+
+	    if (str.length() <= lineLength) {
+		sbans.append(indentation + str.trim() + (i < lines.size() - 1 ? "\n" : ""));
+		continue;
+	    }
+
+	    Character c;
+	    boolean reeval = false;
+	    for (String d : delimiters) {
+		int first = str.indexOf(d.charAt(0));
+		int last = str.lastIndexOf(d.charAt(1));
+
+		boolean matched = first > -1 && last > -1;
+		if (matched) {
+		    String trailing = str.substring(first);
+		    if (trailing.length() > lineLength) {
+			lines.remove(i);
+			lines.add(i, indentation + str.substring(0, first));
+			lines.add(i + 1, String.valueOf(d.charAt(0)));
+			lines.add(i + 2, indentation + tab + str.substring(first + 1, last));
+			lines.add(i + 3, String.valueOf(d.charAt(1)));
+			lines.add(i + 4, indentation + str.substring(last + 1));
+		    } else {
+			lines.remove(i);
+			lines.add(i, indentation + str.substring(0, first));
+			lines.add(i + 1, indentation + str.substring(first));
+		    }
+		}
+
+		reeval = matched;
+		if (reeval)
+		    break;
+		
+		int search = Math.min(str.length()-1, lineLength-1);
+
+		c = str.charAt(search);
+		
+		while(search > -1 && !String.valueOf(c).isBlank()) {
+		    search--;
+		    if(search >=0) c = str.charAt(search);
+		}
+		
+		if(search >= 0) {
+		    lines.remove(i);
+		    lines.add(i, str.substring(0, search + 1));
+		    lines.add(i + 1, str.substring(search + 1));		    
+		} else {
+		    int x = 0;
+		    String s = str;
+		    lines.remove(i);
+		    while(s.length() > 0) {
+			boolean isLast = s.length() <= lineLength;
+			lines.add(i+(x++), s.substring(0, Math.min(lineLength, s.length())));
+			if(!isLast) {
+			    s = s.substring(lineLength);
+			} else {
+			    s = "";
+			}
+		    }
+		}
+		reeval = true;
+
+		break;
+	    }
+	    if (reeval)
+		i--;
+	}
+
+	return Joiner.on("\n").join(lines.stream().map((s) -> s.trim()).toList());
     }
-    
-    public static void main( String[] args ) throws IOException
-    {
+
+    public static void main(String[] args) throws IOException {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
-	//OpenAiChatModel model = b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
-	//OpenAiChatModel model = b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).build();
-	OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile").apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).build();
-	//System.out.println(model.generate("Hello!"));
-        
+	// OpenAiChatModel model =
+	// b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
+	// OpenAiChatModel model =
+	// b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).build();
+	OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile")
+		.apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).build();
+	// System.out.println(model.generate("Hello!"));
+
 	OpenAiEmbeddingModelBuilder b2 = new OpenAiEmbeddingModelBuilder();
-        OpenAiEmbeddingModel emodel = b2.baseUrl("http://localhost:1234/v1").modelName("nomic-embed-text").apiKey("DUMMY").timeout(Duration.ZERO).build();
-        
-        //OpenAiEmbeddingModel emodel = b2.modelName("text-embedding-3-small").apiKey(System.getenv("OPENAI_API_KEY")).timeout(Duration.ZERO).build();
-        Neo4jEmbeddingStore store = Neo4jEmbeddingStore.builder()
-        	.withBasicAuth("bolt://0.0.0.0:7687", "neo4j", "")
-        	.dimension(emodel.dimension())
-        	.indexName("ncg777.store.nomic")
-        	.build();
-        
-        DocumentSplitter splitter = (new RecursiveDocumentSplitterFactory()).create();
-        
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-        	.embeddingModel(emodel)
-        	.embeddingStore(store)
-        	.build();
-        
-        DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create(); 
-       
-        ingest(ingestor, parser, splitter);
-    
-        EmbeddingStoreContentRetriever embeddingStoreContentRetriever = 
-        	EmbeddingStoreContentRetriever.builder().embeddingModel(emodel).embeddingStore(store).build();
-        
-        // Let's create our web search content retriever.
-        WebSearchEngine webSearchEngine = TavilyWebSearchEngine.builder()
-                .apiKey(System.getenv("TAVILY_API_KEY"))
-                .build();
+	OpenAiEmbeddingModel emodel = b2.baseUrl("http://localhost:1234/v1").modelName("nomic-embed-text")
+		.apiKey("DUMMY").timeout(Duration.ZERO).build();
 
-        ContentRetriever webSearchContentRetriever = WebSearchContentRetriever.builder()
-                .webSearchEngine(webSearchEngine)
-                .maxResults(5)
-                .build();
+	// OpenAiEmbeddingModel emodel =
+	// b2.modelName("text-embedding-3-small").apiKey(System.getenv("OPENAI_API_KEY")).timeout(Duration.ZERO).build();
+	Neo4jEmbeddingStore store = Neo4jEmbeddingStore.builder().withBasicAuth("bolt://0.0.0.0:7687", "neo4j", "")
+		.dimension(emodel.dimension()).indexName("ncg777.store.nomic").build();
 
-        QueryRouter queryRouter = new DefaultQueryRouter(embeddingStoreContentRetriever, webSearchContentRetriever);
+	DocumentSplitter splitter = (new RecursiveDocumentSplitterFactory()).create();
 
-        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-                .queryRouter(queryRouter)
-                .build();
+	EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder().embeddingModel(emodel).embeddingStore(store)
+		.build();
 
-        
-        Assistant ass = AiServices.builder(Assistant.class)
-        	.retrievalAugmentor(retrievalAugmentor)
-        	.chatLanguageModel(model)
-        	.chatMemory(MessageWindowChatMemory.withMaxMessages(25))
-        	.build();
-        do {
-            System.out.println("\nUSER MESSAGE:");
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+	DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create();
 
-            String input = reader.readLine();
-            
-            if(input.isEmpty()) break;
-            Result<String> answer = ass.chat(input);
-            
-            System.out.println("\nAI ANSWER:");
-            System.out.println(formatAnswer(answer.content()));
-        } while(true);
+	ingest(ingestor, parser, splitter);
+
+	EmbeddingStoreContentRetriever embeddingStoreContentRetriever = EmbeddingStoreContentRetriever.builder()
+		.embeddingModel(emodel).embeddingStore(store).build();
+
+	// Let's create our web search content retriever.
+	WebSearchEngine webSearchEngine = TavilyWebSearchEngine.builder().apiKey(System.getenv("TAVILY_API_KEY"))
+		.build();
+
+	ContentRetriever webSearchContentRetriever = WebSearchContentRetriever.builder()
+		.webSearchEngine(webSearchEngine).maxResults(5).build();
+
+	QueryRouter queryRouter = new DefaultQueryRouter(embeddingStoreContentRetriever, webSearchContentRetriever);
+
+	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
+
+	Assistant ass = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)
+		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(25)).build();
+	do {
+	    System.out.println("\nUSER MESSAGE:");
+	    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+	    String input = reader.readLine();
+
+	    if (input.isEmpty())
+		break;
+	    Result<String> answer = ass.chat(input);
+
+	    System.out.println("\nAI ANSWER:");
+	    System.out.println(formatAnswer(answer.content()));
+	} while (true);
     }
 }

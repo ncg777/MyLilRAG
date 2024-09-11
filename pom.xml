@@ -15,6 +15,11 @@
   </properties>
 
   <dependencies>
+  	<dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>31.1-jre</version>
+	</dependency>
     <dependency>
       <groupId>dev.langchain4j</groupId>
       <artifactId>langchain4j-web-search-engine-tavily</artifactId>
