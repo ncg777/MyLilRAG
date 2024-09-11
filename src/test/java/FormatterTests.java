@@ -21,6 +21,20 @@ public class FormatterTests extends TestCase {
 	expected =	               "skhfkh slsg slkjglsjdlg sldjglsjglk sljglsjg sldjglsjdlg sldjglsdgl\n{abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefgh}";
         assertEquals(expected, result);
         
+        result = Formatter.formatAnswer("skhfkh slsg slkjglsjdlg sldjglsjglk sljglsjg sldjglsjdlg sldjglsdgl {abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefg abcdefgh}");
+	expected =	               "skhfkh slsg slkjglsjdlg sldjglsjglk sljglsjg sldjglsjdlg sldjglsdgl {\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefg\n"
+		+ "    abcdefgh\n"
+		+ "}";
+        assertEquals(expected, result);
         
         result = Formatter.formatAnswer("A combination is a selection of objects from a collection where the order doesn't matter. In other words, it is a way of choosing elements from a set in which the order of selection does not affect the outcome.");
         expected = "A combination is a selection of objects from a collection where the order\ndoesn't matter. In other words, it is a way of choosing elements from a set in\nwhich the order of selection does not affect the outcome.";

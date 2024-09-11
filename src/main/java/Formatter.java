@@ -64,40 +64,43 @@ public class Formatter {
 			    List<String> leadingLines = splitOnBlank(leading);
 			    lines.addAll(i, leadingLines);
 			    String innerBody = str.substring(first + 1, last).trim();
-			    boolean startsWithDelimiter = false;
+			    boolean startsWithParenthesis = false;
 			    for(int j=0;j<parentheseses.length;j++) {
 				if(innerBody.charAt(0) == parentheseses[j].charAt(0)) {
-				    startsWithDelimiter = true;
+				    startsWithParenthesis = true;
 				    break;
 				}
 			    }
 			    int current = i + leadingLines.size();
 			    lines.add(current++, indentation + String.valueOf(d.charAt(0)));
-			    if(!startsWithDelimiter) {
-				String[] splitted = null;
+			    if(!startsWithParenthesis) {
+				String[] splitted = {innerBody};
 				Character ch = null;
 				for(int j=0;j<potentialDelimiters.length;j++) {
 				    String[] candidate = innerBody.split(String.valueOf(potentialDelimiters[j]));
-				    if(splitted == null || candidate.length > splitted.length) {
+				    if(candidate.length > splitted.length) {
 					splitted = candidate;
 					ch = potentialDelimiters[j];
 				    }
 				}
 				for(int j=0;j<splitted.length;j++) {
-				    String suffix = ch.toString();
+				    String suffix = ch == null ? "" : ch.toString();
 				    if(j == splitted.length-1) {
 					if(suffix.equals(",") || suffix.equals(" ")) {
 					    suffix = "";
 					}
 				    }
-				    lines.add(current++,indentation + splitted[j] + suffix);
+				    lines.add(current++,indentation + tab + splitted[j] + suffix);
 				}
 			    } else {
 				lines.add(current++, indentation + tab + innerBody);
 			    }
 			    
 			    lines.add(current++, indentation + String.valueOf(d.charAt(1)));
-			    lines.add(current++, indentation + str.substring(last + 1));
+			    String q = indentation + str.substring(last + 1);
+			    
+			    if(!q.isBlank()) lines.add(current++, q);
+			    
 			    if(lines.get(i).length() < lineLength-2) {
 				lines.set(i, lines.get(i) + " " + lines.get(i+1));
 				lines.remove(i+1);
@@ -154,7 +157,7 @@ public class Formatter {
 		i--;
 	}
 
-	return Joiner.on("\n").join(lines.stream().map((s) -> s.trim()).toList());
+	return Joiner.on("\n").join(lines.stream().map((s) -> s.stripTrailing()).toList());
     }
 
     private static List<String> splitOnBlank(String str) {
