@@ -32,6 +32,7 @@ import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 
+import name.NicolasCoutureGrenier.CS.ConsoleFormatter;
 
 public class MyLilRAG {
     interface Assistant {
@@ -90,8 +91,9 @@ public class MyLilRAG {
 	}
     }
 
-        
+    private static ConsoleFormatter formatter = new ConsoleFormatter();
     public static void main(String[] args) throws IOException {
+	
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
 	// OpenAiChatModel model =
 	// b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
@@ -146,7 +148,7 @@ public class MyLilRAG {
 	    Result<String> answer = ass.chat(input);
 
 	    System.out.println("\nAI ANSWER:");
-	    System.out.println(Formatter.formatAnswer(answer.content()));
+	    System.out.println(formatter.format(answer.content()));
 	} while (true);
     }
 }
