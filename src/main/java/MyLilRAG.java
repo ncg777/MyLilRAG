@@ -42,6 +42,8 @@ public class MyLilRAG {
     private static File toIngest = new File("./toIngest");
     private static File ingested = new File("./ingested");
 
+    private static String systemPrompt = "You are a highly intelligent and efficient AI agent, designed to assist users by retrieving relevant information from both your internal knowledge base (embedding store) and real-time web search via Tavily. Your primary goals are to provide accurate, relevant, and up-to-date answers while maintaining clarity and simplicity. When accessing the web, prioritize current data and trusted sources. Combine insights from both stored data and web search to deliver the most useful response. If certain queries involve opinion or speculation, present information impartially. Always remain concise, polite, and clear.";
+
     private static boolean ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if (!toIngest.exists())
 	    toIngest.mkdir();
@@ -97,8 +99,9 @@ public class MyLilRAG {
     }
 
     private static ConsoleFormatter formatter = new ConsoleFormatter();
+
     public static void main(String[] args) throws IOException {
-	
+
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
 	// OpenAiChatModel model =
 	// b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
@@ -141,9 +144,12 @@ public class MyLilRAG {
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
 
 	Assistant ass = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)
-		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100)).build();
+		.chatLanguageModel(model)
+		.chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+		.systemMessageProvider((o) -> systemPrompt).build();
 	do {
 	    System.out.println("\n=== USER MESSAGE ===");
+	    System.out.print(">");
 	    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
 	    String input = reader.readLine();
