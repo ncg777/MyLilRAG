@@ -42,18 +42,20 @@ public class MyLilRAG {
     private static File toIngest = new File("./toIngest");
     private static File ingested = new File("./ingested");
 
-    private static void ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
+    private static boolean ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if (!toIngest.exists())
 	    toIngest.mkdir();
 	if (!ingested.exists())
 	    ingested.mkdir();
 	if (toIngest.listFiles().length > 0)
-	    ingest(toIngest, ingestor, parser, splitter);
+	    return ingest(toIngest, ingestor, parser, splitter);
+	return false;
     }
 
-    private static void ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser,
+    private static boolean ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser,
 	    DocumentSplitter splitter) {
 	if (f.isDirectory()) {
+	    boolean o = false;
 	    if (!f.equals(toIngest)) {
 		System.out.println("Ingesting directory: " + f.getPath().substring(toIngest.getPath().length()));
 	    } else {
@@ -66,6 +68,7 @@ public class MyLilRAG {
 		    newDir.mkdir();
 	    }
 	    for (File s : f.listFiles()) {
+		o = true;
 		ingest(s, ingestor, parser, splitter);
 	    }
 	    String path = f.getPath();
@@ -76,6 +79,7 @@ public class MyLilRAG {
 	    } else {
 		System.out.println("Done ingesting new documents.");
 	    }
+	    return o;
 	} else {
 	    System.out.println("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
 
@@ -88,6 +92,7 @@ public class MyLilRAG {
 	    String p = ingested.getPath() + f.getPath().substring(toIngest.getPath().length());
 	    f.renameTo(new File(p));
 	    System.out.println("Ingested and archived: " + f.getPath().substring(toIngest.getPath().length()));
+	    return true;
 	}
     }
 
@@ -136,9 +141,9 @@ public class MyLilRAG {
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
 
 	Assistant ass = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)
-		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(25)).build();
+		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100)).build();
 	do {
-	    System.out.println("\nUSER MESSAGE:");
+	    System.out.println("\n=== USER MESSAGE ===");
 	    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
 	    String input = reader.readLine();
@@ -147,7 +152,7 @@ public class MyLilRAG {
 		break;
 	    Result<String> answer = ass.chat(input);
 
-	    System.out.println("\nAI ANSWER:");
+	    System.out.println("\n=== AI ANSWER ===");
 	    System.out.println(formatter.format(answer.content()));
 	} while (true);
     }
