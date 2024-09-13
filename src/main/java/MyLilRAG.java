@@ -104,8 +104,9 @@ public class MyLilRAG {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
 	// OpenAiChatModel model =
 	// b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
-	// OpenAiChatModel model =
-	// b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).build();
+	//OpenAiChatModel model =
+	//	b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).responseFormat("json_schema")
+	//	.strictJsonSchema(true).build();
 	OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile")
 		.apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).responseFormat("json_schema")
 		.strictJsonSchema(true).build();
