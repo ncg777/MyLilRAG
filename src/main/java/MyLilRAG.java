@@ -3,12 +3,33 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+
+import org.burningwave.core.assembler.ComponentContainer;
+import org.burningwave.core.assembler.ComponentSupplier;
+import org.burningwave.core.classes.AnnotationSourceGenerator;
+import org.burningwave.core.classes.ClassFactory;
+import org.burningwave.core.classes.ClassFactory.ClassRetriever;
+import org.burningwave.core.classes.ClassSourceGenerator;
+import org.burningwave.core.classes.Constructors;
+import org.burningwave.core.classes.FunctionSourceGenerator;
+import org.burningwave.core.classes.SourceGenerator;
+import org.burningwave.core.classes.TypeDeclarationSourceGenerator;
+import org.burningwave.core.classes.UnitSourceGenerator;
+import org.burningwave.core.classes.VariableSourceGenerator;
+
+import com.google.common.base.Joiner;
 
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
+import dev.ai4j.openai4j.chat.Tool;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -43,6 +64,64 @@ public class MyLilRAG {
     private static File ingested = new File("./ingested");
 
     private static String systemPrompt = "You are a highly intelligent and efficient AI agent, designed to assist users by retrieving relevant information from both your internal knowledge base (embedding store) and real-time web search via Tavily. Your primary goals are to provide accurate, relevant, and up-to-date answers while maintaining clarity and simplicity. When accessing the web, prioritize current data and trusted sources. Combine insights from both stored data and web search to deliver the most useful response. If certain queries involve opinion or speculation, present information impartially. Always remain concise, polite, and clear.";
+
+    private static Object buildToolFromClass(Class<?> cl) {
+	UnitSourceGenerator unitSG = UnitSourceGenerator.create("Tools");
+	
+	var gen = ClassSourceGenerator.create(
+		TypeDeclarationSourceGenerator.create(cl.getSimpleName() + "Tool"))
+		.addModifier(Modifier.PUBLIC);
+
+	
+	for (Method method : cl.getMethods()) {
+	    if (!Modifier.isStatic(method.getModifiers()))
+		continue;
+
+	    var gen2 = FunctionSourceGenerator.create(method.getName())
+		    .addAnnotation(AnnotationSourceGenerator.create(dev.langchain4j.agent.tool.Tool.class)).setReturnType(method.getReturnType());
+	    gen2.addModifier(Modifier.PUBLIC);
+	    String body = "return " + cl.getCanonicalName() + "." + method.getName() + "(";
+	    List<String> params = new ArrayList<String>();
+	    for (Parameter p : method.getParameters()) {
+		gen2.addParameter(VariableSourceGenerator.create(p.getType(), p.getName()));
+		params.add(p.getName());
+	    }
+	    body += Joiner.on(", ").join(params) + ");";
+	    gen2.addBodyCode(body);
+	    gen.addMethod(gen2);
+	}
+
+	ComponentSupplier componentSupplier = ComponentContainer.getInstance();
+
+	ClassFactory classFactory = componentSupplier.getClassFactory();
+	unitSG.addClass(gen);
+	try {
+	    var classRetriever = classFactory.loadOrBuildAndDefine(unitSG);
+	    
+	    Class<?> toolClass = classRetriever.get("Tools." + cl.getSimpleName() + "Tool");
+	    return toolClass.getDeclaredConstructor().newInstance();
+
+	} catch (InstantiationException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	} catch (IllegalAccessException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	} catch (IllegalArgumentException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	} catch (InvocationTargetException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	} catch (NoSuchMethodException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	} catch (SecurityException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	}
+	return null;
+    }
 
     private static boolean ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if (!toIngest.exists())
@@ -105,8 +184,10 @@ public class MyLilRAG {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
 	// OpenAiChatModel model =
 	// b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
-	//OpenAiChatModel model = b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).build();
-	OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile").apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).build();
+	// OpenAiChatModel model =
+	// b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).build();
+	OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile")
+		.apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).build();
 	// System.out.println(model.generate("Hello!"));
 
 	OpenAiEmbeddingModelBuilder b2 = new OpenAiEmbeddingModelBuilder();
@@ -141,9 +222,10 @@ public class MyLilRAG {
 
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
 
-	Assistant assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)
-		.chatLanguageModel(model)
-		.chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+	List<Object> tools = new ArrayList<Object>();
+	tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Numbers.class));
+	Assistant assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor).tools(tools)
+		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100))
 		.systemMessageProvider((o) -> systemPrompt).build();
 	do {
 	    System.out.println("\n=== USER MESSAGE ===");
