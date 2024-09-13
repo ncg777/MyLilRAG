@@ -15,11 +15,8 @@ import org.burningwave.core.assembler.ComponentContainer;
 import org.burningwave.core.assembler.ComponentSupplier;
 import org.burningwave.core.classes.AnnotationSourceGenerator;
 import org.burningwave.core.classes.ClassFactory;
-import org.burningwave.core.classes.ClassFactory.ClassRetriever;
 import org.burningwave.core.classes.ClassSourceGenerator;
-import org.burningwave.core.classes.Constructors;
 import org.burningwave.core.classes.FunctionSourceGenerator;
-import org.burningwave.core.classes.SourceGenerator;
 import org.burningwave.core.classes.TypeDeclarationSourceGenerator;
 import org.burningwave.core.classes.UnitSourceGenerator;
 import org.burningwave.core.classes.VariableSourceGenerator;
@@ -29,7 +26,7 @@ import com.google.common.base.Joiner;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
-import dev.ai4j.openai4j.chat.Tool;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -83,7 +80,19 @@ public class MyLilRAG {
 	    String body = "return " + cl.getCanonicalName() + "." + method.getName() + "(";
 	    List<String> params = new ArrayList<String>();
 	    for (Parameter p : method.getParameters()) {
-		gen2.addParameter(VariableSourceGenerator.create(p.getType(), p.getName()));
+		try {
+		    gen2.addParameter(
+			    VariableSourceGenerator.create(
+				    p.getType(), 
+				    p.getName()
+				    )
+			    );
+		} catch (IllegalArgumentException
+			| SecurityException e) {
+		    // TODO Auto-generated catch block
+		    e.printStackTrace();
+		}
+		
 		params.add(p.getName());
 	    }
 	    body += Joiner.on(", ").join(params) + ");";
@@ -222,9 +231,10 @@ public class MyLilRAG {
 
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
 
-	List<Object> tools = new ArrayList<Object>();
-	tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Numbers.class));
-	Assistant assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor).tools(tools)
+	//List<Object> tools = new ArrayList<Object>();
+	//tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Numbers.class));
+	//tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Objects.Combination.class));
+	Assistant assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor) //.tools(tools)
 		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100))
 		.systemMessageProvider((o) -> systemPrompt).build();
 	do {
