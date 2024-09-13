@@ -89,6 +89,8 @@ public class MyLilRAG {
 	@SystemMessage("You are a highly intelligent and efficient AI agent, designed to assist users by retrieving relevant information from both your internal knowledge base (embedding store) and real-time web search via Tavily. Your primary goals are to provide accurate, relevant, and up-to-date answers while maintaining clarity and simplicity. When accessing the web, prioritize current data and trusted sources. Combine insights from both stored data and web search to deliver the most useful response. If certain queries involve opinion or speculation, present information impartially. Always remain concise, polite, and clear.")
 	Result<String> chat(String userMessage);
     }
+    private JTextArea textAreaInput;
+    private JTextArea textAreaOutput;
     
     private Assistant assistant;
     /**
@@ -123,8 +125,6 @@ public class MyLilRAG {
 
 	DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create();
 
-	ingest(ingestor, parser, splitter);
-
 	EmbeddingStoreContentRetriever embeddingStoreContentRetriever = EmbeddingStoreContentRetriever.builder()
 		.embeddingModel(emodel).embeddingStore(store).build();
 
@@ -154,7 +154,7 @@ public class MyLilRAG {
 	
 	JScrollPane scrollPane = new JScrollPane();
 	
-	JTextArea textAreaOutput = new JTextArea();
+	textAreaOutput = new JTextArea();
 	textAreaOutput.setEditable(false);
 	textAreaOutput.setWrapStyleWord(true);
 	textAreaOutput.setTabSize(2);
@@ -163,11 +163,12 @@ public class MyLilRAG {
 	
 	JScrollPane scrollPane_1 = new JScrollPane();
 	
-	JTextArea textAreaInput = new JTextArea();
+	textAreaInput = new JTextArea();
 	textAreaInput.setWrapStyleWord(true);
 	textAreaInput.setTabSize(2);
 	textAreaInput.setLineWrap(true);
 	scrollPane_1.setViewportView(textAreaInput);
+
 	
 	JButton btnNewButton = new JButton("Send message");
 	btnNewButton.addActionListener(new ActionListener() {
@@ -217,6 +218,8 @@ public class MyLilRAG {
 				.addGap(11))
 	);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
+	ingest(ingestor, parser, splitter);
+	
     }
 
     private static File toIngest = new File("./toIngest");
@@ -293,7 +296,7 @@ public class MyLilRAG {
 	return null;
     }
 
-    private static boolean ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
+    private boolean ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
 	if (!toIngest.exists())
 	    toIngest.mkdir();
 	if (!ingested.exists())
@@ -302,15 +305,17 @@ public class MyLilRAG {
 	    return ingest(toIngest, ingestor, parser, splitter);
 	return false;
     }
-
-    private static boolean ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser,
+    private void printToOutput(String s) {
+	textAreaOutput.setText(textAreaOutput.getText()+"\n" + s);
+    }
+    private boolean ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser,
 	    DocumentSplitter splitter) {
 	if (f.isDirectory()) {
 	    boolean o = false;
 	    if (!f.equals(toIngest)) {
-		System.out.println("Ingesting directory: " + f.getPath().substring(toIngest.getPath().length()));
+		printToOutput("Ingesting directory: " + f.getPath().substring(toIngest.getPath().length()));
 	    } else {
-		System.out.println("Ingesting new documents...");
+		printToOutput("Ingesting new documents...");
 	    }
 
 	    if (!f.equals(toIngest)) {
@@ -326,13 +331,13 @@ public class MyLilRAG {
 	    if (!f.equals(toIngest))
 		f.delete();
 	    if (!path.equals(toIngest.getPath())) {
-		System.out.println("Ingested and archived directory: " + path.substring(toIngest.getPath().length()));
+		printToOutput("Ingested and archived directory: " + path.substring(toIngest.getPath().length()));
 	    } else {
-		System.out.println("Done ingesting new documents.");
+		printToOutput("Done ingesting new documents.");
 	    }
 	    return o;
 	} else {
-	    System.out.println("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
+	    printToOutput("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
 
 	    Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
 	    List<TextSegment> segments = splitter.split(doc);
@@ -342,7 +347,7 @@ public class MyLilRAG {
 
 	    String p = ingested.getPath() + f.getPath().substring(toIngest.getPath().length());
 	    f.renameTo(new File(p));
-	    System.out.println("Ingested and archived: " + f.getPath().substring(toIngest.getPath().length()));
+	    printToOutput("Ingested and archived: " + f.getPath().substring(toIngest.getPath().length()));
 	    return true;
 	}
     }
