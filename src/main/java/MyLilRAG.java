@@ -237,15 +237,23 @@ public class MyLilRAG {
 	Assistant assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor) //.tools(tools)
 		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100))
 		.systemMessageProvider((o) -> systemPrompt).build();
+	
 	do {
 	    System.out.println("\n=== USER MESSAGE ===");
-	    System.out.print("> ");
 	    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-
-	    String input = reader.readLine();
-
-	    if (input.isEmpty())
-		break;
+	    
+	    String input = "";
+	    System.out.print("> ");
+	    int emptyCount = 0;
+	    while(emptyCount < 2) {
+		
+		var line = reader.readLine();
+		
+		input += line + "\n";
+		if(line.isEmpty()) emptyCount++;
+		else {emptyCount = 0;}
+	    }
+	    if(input.replaceAll("\n","").trim().isEmpty()) break;
 	    Result<String> answer = assistant.chat(input);
 
 	    System.out.println("\n=== AI ANSWER ===");
