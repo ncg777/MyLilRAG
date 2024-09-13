@@ -26,5 +26,5 @@ Before running the application, ensure you have the following installed:
 ### Clone the Repository
 
 ```bash
-git clone <repository_url>
+git clone https://github.com/ncg777/MyLilRAG.git
 cd MyLilRAG
