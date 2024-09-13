@@ -155,6 +155,7 @@ public class MyLilRAG {
 	JScrollPane scrollPane = new JScrollPane();
 	
 	JTextArea textAreaOutput = new JTextArea();
+	textAreaOutput.setEnabled(false);
 	textAreaOutput.setWrapStyleWord(true);
 	textAreaOutput.setTabSize(2);
 	textAreaOutput.setLineWrap(true);
