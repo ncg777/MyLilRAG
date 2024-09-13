@@ -128,10 +128,8 @@ public class MyLilRAG {
     private OpenAiChatModel getOpenAiChatModel() {
 	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
 	// return b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").responseFormat("json_schema").strictJsonSchema(true).build();
-	// return b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).responseFormat("json_schema").strictJsonSchema(true).build();
-	return b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile")
-		.apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).responseFormat("json_schema")
-		.strictJsonSchema(true).build();
+	//return b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).responseFormat("json_schema").strictJsonSchema(true).build();
+	return b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile").apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).responseFormat("json_schema").strictJsonSchema(true).build();
 
     }
     private Assistant buildAssistant() {
@@ -155,7 +153,7 @@ public class MyLilRAG {
     private void initialize() {
 	frmMylilrag = new JFrame();
 	frmMylilrag.setTitle("MyLilRAG");
-	frmMylilrag.setBounds(100, 100, 533, 438);
+	frmMylilrag.setBounds(100, 100, 928, 498);
 	frmMylilrag.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 	JScrollPane scrollPane = new JScrollPane();
@@ -196,22 +194,33 @@ public class MyLilRAG {
 
 	JLabel lblNewLabel = new JLabel("User message:");
 	GroupLayout groupLayout = new GroupLayout(frmMylilrag.getContentPane());
-	groupLayout.setHorizontalGroup(groupLayout.createParallelGroup(Alignment.LEADING).addGroup(groupLayout
-		.createSequentialGroup().addGap(10)
-		.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-			.addComponent(btnNewButton, GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE)
-			.addComponent(scrollPane)
+	groupLayout.setHorizontalGroup(
+		groupLayout.createParallelGroup(Alignment.LEADING)
 			.addGroup(groupLayout.createSequentialGroup()
-				.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE).addGap(1))
-			.addGroup(groupLayout.createSequentialGroup()
-				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 494, Short.MAX_VALUE).addGap(4)))
-		.addContainerGap()));
-	groupLayout.setVerticalGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-		.addGroup(groupLayout.createSequentialGroup().addContainerGap()
-			.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 208, Short.MAX_VALUE).addGap(11)
-			.addComponent(lblNewLabel).addGap(3)
-			.addComponent(scrollPane_1, GroupLayout.PREFERRED_SIZE, 107, GroupLayout.PREFERRED_SIZE)
-			.addGap(11).addComponent(btnNewButton).addGap(11)));
+				.addGap(10)
+				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+					.addComponent(btnNewButton, GroupLayout.DEFAULT_SIZE, 498, Short.MAX_VALUE)
+					.addGroup(Alignment.TRAILING, groupLayout.createSequentialGroup()
+						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+							.addComponent(scrollPane, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE)
+							.addComponent(scrollPane_1, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE)
+							.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 497, Short.MAX_VALUE))
+						.addGap(1)))
+				.addContainerGap())
+	);
+	groupLayout.setVerticalGroup(
+		groupLayout.createParallelGroup(Alignment.LEADING)
+			.addGroup(Alignment.TRAILING, groupLayout.createSequentialGroup()
+				.addContainerGap()
+				.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 208, Short.MAX_VALUE)
+				.addGap(11)
+				.addComponent(lblNewLabel)
+				.addGap(3)
+				.addComponent(scrollPane_1, GroupLayout.PREFERRED_SIZE, 107, GroupLayout.PREFERRED_SIZE)
+				.addGap(11)
+				.addComponent(btnNewButton)
+				.addGap(11))
+	);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
 	assistant = buildAssistant();
 	new Thread(() -> {
