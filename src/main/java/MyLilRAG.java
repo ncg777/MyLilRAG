@@ -219,7 +219,11 @@ public class MyLilRAG {
 				.addGap(11))
 	);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
+	btnNewButton.setEnabled(false);
+	textAreaInput.setEnabled(false);
 	ingest(ingestor, parser, splitter);
+	btnNewButton.setEnabled(true);
+	textAreaInput.setEnabled(true);
 	
     }
 
