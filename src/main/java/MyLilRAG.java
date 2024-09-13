@@ -245,18 +245,19 @@ public class MyLilRAG {
 	    String input = "";
 	    System.out.print("> ");
 	    int emptyCount = 0;
-	    while(emptyCount < 2) {
+	    while(emptyCount < 1) {
 		
 		var line = reader.readLine();
 		
 		input += line + "\n";
-		if(line.isEmpty()) emptyCount++;
+		if(line.trim().isEmpty()) emptyCount++;
 		else {emptyCount = 0;}
 	    }
 	    if(input.replaceAll("\n","").trim().isEmpty()) break;
-	    Result<String> answer = assistant.chat(input);
 
 	    System.out.println("\n=== AI ANSWER ===");
+	    Result<String> answer = assistant.chat(input);
+
 	    System.out.println(formatter.format(answer.content()));
 	} while (true);
     }
