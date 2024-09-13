@@ -19,6 +19,7 @@ Before running the application, ensure you have the following installed:
 
 - [Java JDK 17](https://www.oracle.com/java/technologies/javase-jdk17-downloads.html)
 - [Apache Maven](https://maven.apache.org/download.cgi)
+- local lmstudio server running nomic-embed-text for the embeddings.
 - Neo4j database instance for the embedding store running in a Docker with NEO4J_AUTH set to none.
 - Tavily API key for web search capabilities  set as TAVILY_API_KEY in your environment variables
 - Groq API key for OpenAI model usage set as GROQ_API_KEY in your environment variables.
