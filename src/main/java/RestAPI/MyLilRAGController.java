@@ -1,22 +1,23 @@
 package RestAPI;
 import org.springframework.web.bind.annotation.*;
 
-import AiService.AiService;
+import AiService.MyLilRAGService;
+import dev.langchain4j.service.Result;
+import dev.langchain4j.service.UserMessage;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/chat")
 public class MyLilRAGController {
 
-    private final AiService.Assistant assistant;
+    private final MyLilRAGService.MyLilRAGAssistant myLilRAGAssistant;
 
     public MyLilRAGController() {
-        this.assistant = AiService.getAssistant();
-        AiService.setPrintToOutput((s) -> System.out.println(s));
+        this.myLilRAGAssistant = MyLilRAGService.getAssistant();
+        MyLilRAGService.setPrintToOutput((s) -> System.out.println(s));
     }
 
-    @PostMapping("/ask")
-    public String ask(@RequestBody String question) {
-        String response = assistant.chat(question).content();
-        return response;
+    @PostMapping("/completions")
+    public Result<String> completions(@UserMessage String messages) {
+        return myLilRAGAssistant.chat(messages);
     }
 }

@@ -6,7 +6,7 @@ import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
-import AiService.AiService;
+import AiService.MyLilRAGService;
 import dev.langchain4j.service.Result;
 
 import javax.swing.JButton;
@@ -81,7 +81,8 @@ public class MyLilRAG {
 		    textAreaInput.setEnabled(false);
 		    String input = textAreaInput.getText();
 		    textAreaInput.setText("");
-		    Result<String> answer = assistant.chat(input);
+		    
+		    Result<String> answer = MyLilRAGService.getAssistant().chat(input);
 
 		    textAreaOutput.setText(textAreaOutput.getText() + "===USER MESSAGE ===\n" + input + "\n\n"
 			    + "=== AI ANSWER ===\n" + answer.content() + "\n\n");
@@ -122,11 +123,11 @@ public class MyLilRAG {
 				.addGap(11))
 	);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
-	AiService.setPrintToOutput((s) -> printToOutput(s));
+	MyLilRAGService.setPrintToOutput((s) -> printToOutput(s));
 	new Thread(() -> {
 	    btnNewButton.setEnabled(false);
 	    textAreaInput.setEnabled(false);
-	    AiService.ingest();
+	    MyLilRAGService.ingest();
 	    btnNewButton.setEnabled(true);
 	    textAreaInput.setEnabled(true);
 
@@ -134,7 +135,6 @@ public class MyLilRAG {
 
     }
 
-    private AiService.Assistant assistant = AiService.getAssistant();
     /*
     private static Object buildToolFromClass(Class<?> cl) {
 	UnitSourceGenerator unitSG = UnitSourceGenerator.create("Tools");
