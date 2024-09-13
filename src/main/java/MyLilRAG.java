@@ -181,6 +181,7 @@ public class MyLilRAG {
 			    Result<String> answer = assistant.chat(input);
 			    
 			    textAreaOutput.setText(textAreaOutput.getText() +"===USER MESSAGE ===\n"+ input + "\n\n" + "=== AI ANSWER ===\n" + answer.content()+ "\n\n");
+			    textAreaOutput.setCaretPosition(textAreaOutput.getText().length());
 			    textAreaInput.setEnabled(true);
 			    btnNewButton.setEnabled(true);
 		    }).start();
