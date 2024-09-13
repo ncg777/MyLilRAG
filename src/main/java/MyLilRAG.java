@@ -33,8 +33,8 @@ import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser
 import dev.langchain4j.data.document.splitter.recursive.RecursiveDocumentSplitterFactory;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel.OpenAiChatModelBuilder;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
@@ -47,6 +47,7 @@ import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 import dev.langchain4j.web.search.WebSearchEngine;
@@ -93,61 +94,63 @@ public class MyLilRAG {
 
     private JTextArea textAreaInput;
     private JTextArea textAreaOutput;
-
-    private Assistant assistant;
-
-    /**
-     * Initialize the contents of the frame.
-     */
-    private void initialize() {
-
-	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
-	// OpenAiChatModel model =
-	// b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").build();
-	//OpenAiChatModel model =
-	//	b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).responseFormat("json_schema")
-	//	.strictJsonSchema(true).build();
-	OpenAiChatModel model = b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile")
-		.apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).responseFormat("json_schema")
-		.strictJsonSchema(true).build();
-	// System.out.println(model.generate("Hello!"));
-
+    private DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create();
+    private DocumentSplitter splitter = (new RecursiveDocumentSplitterFactory()).create();
+    private EmbeddingModel embeddingModel;
+    private EmbeddingModel getEmbeddingModel() {
+	if(embeddingModel != null) return embeddingModel;
 	OpenAiEmbeddingModelBuilder b2 = new OpenAiEmbeddingModelBuilder();
-	OpenAiEmbeddingModel emodel = b2.baseUrl("http://localhost:1234/v1").modelName("nomic-embed-text")
+	embeddingModel =  b2.baseUrl("http://localhost:1234/v1").modelName("nomic-embed-text")
 		.apiKey("DUMMY").timeout(Duration.ZERO).build();
+	return embeddingModel;
 
-	// OpenAiEmbeddingModel emodel =
-	// b2.modelName("text-embedding-3-small").apiKey(System.getenv("OPENAI_API_KEY")).timeout(Duration.ZERO).build();
+    }
+    private EmbeddingStore<TextSegment> getEmbeddingStore() {
+	EmbeddingModel emodel = getEmbeddingModel();
 	Neo4jEmbeddingStore store = Neo4jEmbeddingStore.builder().withBasicAuth("bolt://0.0.0.0:7687", "neo4j", "")
 		.dimension(emodel.dimension()).indexName("ncg777.store.nomic").build();
-
-	DocumentSplitter splitter = (new RecursiveDocumentSplitterFactory()).create();
-
-	EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder().embeddingModel(emodel).embeddingStore(store)
+	return store;
+    }
+    private EmbeddingStoreContentRetriever getContentRetriever() {
+	return EmbeddingStoreContentRetriever.builder()
+		.embeddingModel(getEmbeddingModel()).embeddingStore(getEmbeddingStore()).build();
+    }
+    private EmbeddingStoreIngestor ingestor = getIngestor();
+    private EmbeddingStoreIngestor getIngestor() {
+	if(ingestor != null) return ingestor;
+	ingestor = EmbeddingStoreIngestor.builder().embeddingModel(getEmbeddingModel()).embeddingStore(getEmbeddingStore())
 		.build();
+	return ingestor;
+    }
+    private Assistant assistant;
+    private OpenAiChatModel getOpenAiChatModel() {
+	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
+	// return b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").responseFormat("json_schema").strictJsonSchema(true).build();
+	// return b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).responseFormat("json_schema").strictJsonSchema(true).build();
+	return b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile")
+		.apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).responseFormat("json_schema")
+		.strictJsonSchema(true).build();
 
-	DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create();
-
-	EmbeddingStoreContentRetriever embeddingStoreContentRetriever = EmbeddingStoreContentRetriever.builder()
-		.embeddingModel(emodel).embeddingStore(store).build();
-
-	// Let's create our web search content retriever.
+    }
+    private Assistant buildAssistant() {
 	WebSearchEngine webSearchEngine = TavilyWebSearchEngine.builder().apiKey(System.getenv("TAVILY_API_KEY"))
 		.build();
 
 	ContentRetriever webSearchContentRetriever = WebSearchContentRetriever.builder()
 		.webSearchEngine(webSearchEngine).maxResults(5).build();
-
+	EmbeddingStoreContentRetriever embeddingStoreContentRetriever = getContentRetriever();
 	QueryRouter queryRouter = new DefaultQueryRouter(embeddingStoreContentRetriever, webSearchContentRetriever);
 
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
-
-	//List<Object> tools = new ArrayList<Object>();
-	//tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Numbers.class));
-	// tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Objects.Combination.class));
-	assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)//.tools(tools)
+	OpenAiChatModel model = getOpenAiChatModel();
+	
+	return AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)//.tools(tools)
 		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100)).build();
-
+    }
+    /**
+     * Initialize the contents of the frame.
+     */
+    private void initialize() {
 	frmMylilrag = new JFrame();
 	frmMylilrag.setTitle("MyLilRAG");
 	frmMylilrag.setBounds(100, 100, 533, 438);
@@ -208,10 +211,11 @@ public class MyLilRAG {
 			.addComponent(scrollPane_1, GroupLayout.PREFERRED_SIZE, 107, GroupLayout.PREFERRED_SIZE)
 			.addGap(11).addComponent(btnNewButton).addGap(11)));
 	frmMylilrag.getContentPane().setLayout(groupLayout);
+	assistant = buildAssistant();
 	new Thread(() -> {
 	    btnNewButton.setEnabled(false);
 	    textAreaInput.setEnabled(false);
-	    ingest(ingestor, parser, splitter);
+	    ingest();
 	    btnNewButton.setEnabled(true);
 	    textAreaInput.setEnabled(true);
 
@@ -286,13 +290,13 @@ public class MyLilRAG {
 	return null;
     }
 
-    private boolean ingest(EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
+    private boolean ingest() {
 	if (!toIngest.exists())
 	    toIngest.mkdir();
 	if (!ingested.exists())
 	    ingested.mkdir();
 	if (toIngest.listFiles().length > 0)
-	    return ingest(toIngest, ingestor, parser, splitter);
+	    return ingest(toIngest);
 	return false;
     }
 
@@ -300,7 +304,7 @@ public class MyLilRAG {
 	textAreaOutput.setText(textAreaOutput.getText() + "\n" + s);
     }
 
-    private boolean ingest(File f, EmbeddingStoreIngestor ingestor, DocumentParser parser, DocumentSplitter splitter) {
+    private boolean ingest(File f) {
 	if (f.isDirectory()) {
 	    boolean o = false;
 	    if (!f.equals(toIngest)) {
@@ -316,7 +320,7 @@ public class MyLilRAG {
 	    }
 	    for (File s : f.listFiles()) {
 		o = true;
-		ingest(s, ingestor, parser, splitter);
+		ingest(s);
 	    }
 	    String path = f.getPath();
 	    if (!f.equals(toIngest))
