@@ -96,7 +96,7 @@ public class MyLilRAG {
     private JTextArea textAreaOutput;
     private DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create();
     private DocumentSplitter splitter = (new RecursiveDocumentSplitterFactory()).create();
-    private EmbeddingModel embeddingModel;
+    private EmbeddingModel embeddingModel = getEmbeddingModel();
     private EmbeddingModel getEmbeddingModel() {
 	if(embeddingModel != null) return embeddingModel;
 	OpenAiEmbeddingModelBuilder b2 = new OpenAiEmbeddingModelBuilder();
@@ -105,11 +105,13 @@ public class MyLilRAG {
 	return embeddingModel;
 
     }
+    EmbeddingStore<TextSegment> embeddingStore = getEmbeddingStore();
     private EmbeddingStore<TextSegment> getEmbeddingStore() {
+	if(embeddingStore != null) return embeddingStore;
 	EmbeddingModel emodel = getEmbeddingModel();
-	Neo4jEmbeddingStore store = Neo4jEmbeddingStore.builder().withBasicAuth("bolt://0.0.0.0:7687", "neo4j", "")
+	embeddingStore = Neo4jEmbeddingStore.builder().withBasicAuth("bolt://0.0.0.0:7687", "neo4j", "")
 		.dimension(emodel.dimension()).indexName("ncg777.store.nomic").build();
-	return store;
+	return embeddingStore;
     }
     private EmbeddingStoreContentRetriever getContentRetriever() {
 	return EmbeddingStoreContentRetriever.builder()
