@@ -141,7 +141,7 @@ public class MyLilRAG {
 
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
 
-	Assistant ass = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)
+	Assistant assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)
 		.chatLanguageModel(model)
 		.chatMemory(MessageWindowChatMemory.withMaxMessages(100))
 		.systemMessageProvider((o) -> systemPrompt).build();
@@ -154,7 +154,7 @@ public class MyLilRAG {
 
 	    if (input.isEmpty())
 		break;
-	    Result<String> answer = ass.chat(input);
+	    Result<String> answer = assistant.chat(input);
 
 	    System.out.println("\n=== AI ANSWER ===");
 	    System.out.println(formatter.format(answer.content()));
