@@ -142,10 +142,10 @@ public class MyLilRAG {
 
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
 
-	// List<Object> tools = new ArrayList<Object>();
-	// tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Numbers.class));
+	//List<Object> tools = new ArrayList<Object>();
+	//tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Numbers.class));
 	// tools.add(buildToolFromClass(name.NicolasCoutureGrenier.Maths.Objects.Combination.class));
-	assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor) // .tools(tools)
+	assistant = AiServices.builder(Assistant.class).retrievalAugmentor(retrievalAugmentor)//.tools(tools)
 		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100)).build();
 
 	frmMylilrag = new JFrame();
