@@ -6,7 +6,6 @@ import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
-import AiService.MyLilRAGService;
 import dev.langchain4j.service.Result;
 
 import javax.swing.JButton;
@@ -15,6 +14,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
+
+import MyLilRAGService.MyLilRAGService;
 
 public class MyLilRAG {
 
@@ -82,13 +83,13 @@ public class MyLilRAG {
 		    String input = textAreaInput.getText();
 		    textAreaInput.setText("");
 		    
-		    Result<String> answer = MyLilRAGService.getAssistant().chat(input);
-
 		    textAreaOutput.setText(textAreaOutput.getText() + "===USER MESSAGE ===\n" + input + "\n\n"
-			    + "=== AI ANSWER ===\n" + answer.content() + "\n\n");
-		    textAreaOutput.setCaretPosition(textAreaOutput.getText().length());
+			    + "=== AI ANSWER ===\n");
+		    Result<String> answer = MyLilRAGService.getAssistant().chat(input);
+		    printToOutput(answer.content());
 		    textAreaInput.setEnabled(true);
 		    btnNewButton.setEnabled(true);
+		    
 		}).start();
 	    }
 	});
@@ -202,6 +203,7 @@ public class MyLilRAG {
 
     private void printToOutput(String s) {
 	textAreaOutput.setText(textAreaOutput.getText() + "\n" + s);
+	textAreaOutput.setCaretPosition(textAreaOutput.getText().length());
     }
-
+    
 }

@@ -1,14 +1,9 @@
-package AiService;
+package MyLilRAGService;
 import java.io.File;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.springframework.stereotype.Service;
-
-import dev.ai4j.openai4j.chat.Content;
-import dev.ai4j.openai4j.chat.Message;
-import dev.ai4j.openai4j.chat.Role;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -21,28 +16,22 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel.OpenAiChatModelBuilder;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder;
-import dev.langchain4j.rag.DefaultRetrievalAugmentor;
-import dev.langchain4j.rag.RetrievalAugmentor;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
-import dev.langchain4j.rag.query.router.DefaultQueryRouter;
-import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
-import dev.langchain4j.web.search.WebSearchEngine;
-import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 
-@Service
 public class MyLilRAGService {
+ 
     public static interface MyLilRAGAssistant {
 	@SystemMessage("You are a highly intelligent and efficient AI agent, designed to assist users by retrieving relevant information from both your internal knowledge base (embedding store) and real-time web search via Tavily. Your primary goals are to provide accurate, relevant, and up-to-date answers while maintaining clarity and simplicity. When accessing the web, prioritize current data and trusted sources. Combine insights from both stored data and web search to deliver the most useful response. If certain queries involve opinion or speculation, present information impartially. Always remain concise, polite, and clear.")
-	Result<String> chat(@UserMessage String userMessages);
+	@UserMessage("{{message}}")
+	Result<String> chat(@V("message") String message);
     }
     
     final private static DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create();
@@ -76,15 +65,33 @@ public class MyLilRAGService {
 	return ingestor;
     }
     private static MyLilRAGAssistant myLilRAGAssistant = getAssistant();
+    
+    private static OpenAiChatModel openAiChatModel = getOpenAiChatModel();
     public static OpenAiChatModel getOpenAiChatModel() {
-	OpenAiChatModelBuilder b = new OpenAiChatModelBuilder();
-	// return b.baseUrl("http://localhost:1234/v1").modelName("duyntnet/Orca-2-13b-imatrix-GGUF").timeout(Duration.ZERO).apiKey("DUMMY").responseFormat("json_schema").strictJsonSchema(true).build();
-	//return b.modelName("gpt-4o-mini").timeout(Duration.ZERO).apiKey(System.getenv("OPENAI_API_KEY")).responseFormat("json_schema").strictJsonSchema(true).build();
-	return b.baseUrl("https://api.groq.com/openai/v1").modelName("llama-3.1-70b-versatile").apiKey(System.getenv("GROQ_API_KEY")).timeout(Duration.ZERO).responseFormat("json_schema").strictJsonSchema(true).build();
+	if(openAiChatModel != null) return openAiChatModel;
+	openAiChatModel = (new OpenAiChatModelBuilder())
+		.baseUrl("https://api.groq.com/openai/v1")
+		.modelName("llama-3.1-70b-versatile")
+		.apiKey(System.getenv("GROQ_API_KEY")).build();
+	return openAiChatModel;
 
     }
+    
+    /*
+    private static OpenAiStreamingChatModel openAiStreamingChatModel = getOpenAiStreamingChatModel();
+    public static OpenAiStreamingChatModel getOpenAiStreamingChatModel() {
+	if(openAiStreamingChatModel != null) return openAiStreamingChatModel;
+	openAiStreamingChatModel = (new OpenAiStreamingChatModelBuilder())
+		.baseUrl("https://api.groq.com/openai/v1")
+		.modelName("llama-3.1-70b-versatile")
+		.apiKey(System.getenv("GROQ_API_KEY")).build();
+	return openAiStreamingChatModel;
+
+    }
+    */
     public static MyLilRAGAssistant getAssistant() {
 	if(myLilRAGAssistant != null) return myLilRAGAssistant;
+	/*
 	WebSearchEngine webSearchEngine = TavilyWebSearchEngine.builder().apiKey(System.getenv("TAVILY_API_KEY"))
 		.build();
 
@@ -94,10 +101,12 @@ public class MyLilRAGService {
 	QueryRouter queryRouter = new DefaultQueryRouter(embeddingStoreContentRetriever, webSearchContentRetriever);
 
 	RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
-	OpenAiChatModel model = getOpenAiChatModel();
+	*/
+	myLilRAGAssistant = AiServices.builder(MyLilRAGAssistant.class).chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+		.chatLanguageModel(getOpenAiChatModel())		
+		//.retrievalAugmentor(retrievalAugmentor)
+		.build();
 	
-	myLilRAGAssistant = AiServices.builder(MyLilRAGAssistant.class).retrievalAugmentor(retrievalAugmentor)//.tools(tools)
-		.chatLanguageModel(model).chatMemory(MessageWindowChatMemory.withMaxMessages(100)).build();
 	return myLilRAGAssistant;
     }
 
