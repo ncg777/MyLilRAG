@@ -15,7 +15,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 
-import MyLilRAGService.MyLilRAGService;
+import Services.MyLilRAGService;
 
 public class MyLilRAG {
 
