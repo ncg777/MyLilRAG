@@ -43,7 +43,7 @@ public class MyLilRAGService {
 	if (embeddingModel != null)
 	    return embeddingModel;
 	OpenAiEmbeddingModelBuilder b2 = new OpenAiEmbeddingModelBuilder();
-	embeddingModel = b2.baseUrl("http://localhost:11434/v1").modelName("nomic-embed-text")//.apiKey("DUMMY")
+	embeddingModel = b2.baseUrl("http://localhost:11434/v1").modelName("nomic-embed-text").apiKey("DUMMY")
 		.timeout(Duration.ZERO).build();
 	return embeddingModel;
 
