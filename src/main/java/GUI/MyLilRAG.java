@@ -86,7 +86,7 @@ public class MyLilRAG {
 		    textAreaOutput.setText(textAreaOutput.getText() + "===USER MESSAGE ===\n" + input + "\n\n"
 			    + "=== AI ANSWER ===\n");
 		    Result<String> answer = MyLilRAGService.getAssistant().chat(input);
-		    printToOutput(answer.content());
+		    printToOutput(answer.content() + "\n\n");
 		    textAreaInput.setEnabled(true);
 		    btnNewButton.setEnabled(true);
 		    

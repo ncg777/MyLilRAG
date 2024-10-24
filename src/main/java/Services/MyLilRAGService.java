@@ -84,7 +84,7 @@ public class MyLilRAGService {
 	if (openAiChatModel != null)
 	    return openAiChatModel;
 	openAiChatModel = (new OpenAiChatModelBuilder()).baseUrl("https://api.groq.com/openai/v1")
-		.modelName("llama-3.1-70b-versatile").apiKey(System.getenv("GROQ_API_KEY")).build();
+		.modelName("llama-3.2-90b-vision-preview").apiKey(System.getenv("GROQ_API_KEY")).build();
 	return openAiChatModel;
 
     }
