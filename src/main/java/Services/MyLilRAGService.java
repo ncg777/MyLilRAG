@@ -167,6 +167,7 @@ public class MyLilRAGService {
 	    } else {
 		printToOutput.accept("Done ingesting new documents.");
 	    }
+	    printToOutput.accept("\n\n");
 	    return o;
 	} else {
 	    printToOutput.accept("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
