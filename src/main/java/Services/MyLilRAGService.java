@@ -5,8 +5,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.OpenAiClient.OpenAiClientContext;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
