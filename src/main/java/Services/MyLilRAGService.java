@@ -5,6 +5,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
 
+import dev.ai4j.openai4j.OpenAiClient;
+import dev.ai4j.openai4j.OpenAiClient.OpenAiClientContext;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -30,7 +32,7 @@ import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 public class MyLilRAGService {
 
     public static interface MyLilRAGAssistant {
-	@SystemMessage("You are an AI agent designed to assist users by retrieving relevant information from your internal knowledge base and your intelligence.")
+	@SystemMessage("You are an AI agent designed to assist users by retrieving relevant information from your memory, your internal knowledge base and your intelligence in order to solve problems which is your ultimate purpose.")
 	@UserMessage("{{message}}")
 	Result<String> chat(@V("message") String message);
     }
@@ -79,47 +81,28 @@ public class MyLilRAGService {
     private static MyLilRAGAssistant myLilRAGAssistant = getAssistant();
 
     private static OpenAiChatModel openAiChatModel = getOpenAiChatModel();
-
+    private static OpenAiChatModelBuilder getModelBuilder() {
+	return (new OpenAiChatModelBuilder())
+		.baseUrl("http://localhost:11434/v1")
+		.modelName("llama3.2:3b")
+		.apiKey("ollama");
+    }
+    
     public static OpenAiChatModel getOpenAiChatModel() {
 	if (openAiChatModel != null)
 	    return openAiChatModel;
-	openAiChatModel = (new OpenAiChatModelBuilder()).baseUrl("http://localhost:11434/v1") //"https://api.openai.com/v1")
-		.modelName("deepseek-r1:8b").apiKey("ollama"/*System.getenv("OPENAI_API_KEY")*/).build();
+	openAiChatModel = getModelBuilder().build();
 	return openAiChatModel;
 
     }
 
-    /*
-     * private static OpenAiStreamingChatModel openAiStreamingChatModel =
-     * getOpenAiStreamingChatModel(); public static OpenAiStreamingChatModel
-     * getOpenAiStreamingChatModel() { if(openAiStreamingChatModel != null) return
-     * openAiStreamingChatModel; openAiStreamingChatModel = (new
-     * OpenAiStreamingChatModelBuilder()) .baseUrl("https://api.groq.com/openai/v1")
-     * .modelName("llama-3.1-70b-versatile")
-     * .apiKey(System.getenv("GROQ_API_KEY")).build(); return
-     * openAiStreamingChatModel;
-     * 
-     * }
-     */
+    public static String oneShotChat(String str) {
+	return getModelBuilder().build().generate(str); 
+    }
+    
     public static MyLilRAGAssistant getAssistant() {
 	if (myLilRAGAssistant != null)
 	    return myLilRAGAssistant;
-	/*
-	 * WebSearchEngine webSearchEngine =
-	 * TavilyWebSearchEngine.builder().apiKey(System.getenv("TAVILY_API_KEY"))
-	 * .build();
-	 * 
-	 * ContentRetriever webSearchContentRetriever =
-	 * WebSearchContentRetriever.builder()
-	 * .webSearchEngine(webSearchEngine).maxResults(5).build();
-	 * EmbeddingStoreContentRetriever embeddingStoreContentRetriever =
-	 * getContentRetriever(); QueryRouter queryRouter = new
-	 * DefaultQueryRouter(embeddingStoreContentRetriever,
-	 * webSearchContentRetriever);
-	 * 
-	 * RetrievalAugmentor retrievalAugmentor =
-	 * DefaultRetrievalAugmentor.builder().queryRouter(queryRouter).build();
-	 */
 	myLilRAGAssistant = AiServices.builder(MyLilRAGAssistant.class)
 		.chatMemory(MessageWindowChatMemory.withMaxMessages(100)).chatLanguageModel(getOpenAiChatModel())
 		// .retrievalAugmentor(retrievalAugmentor)
@@ -141,6 +124,11 @@ public class MyLilRAGService {
 	return false;
     }
 
+    public static boolean ingestString(String str) {
+	ingestor.ingest(Document.from(str));
+	return true;
+    }
+    
     private static boolean ingest(File f) {
 	if (f.isDirectory()) {
 	    boolean o = false;
