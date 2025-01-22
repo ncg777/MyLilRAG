@@ -30,7 +30,7 @@ import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 public class MyLilRAGService {
 
     public static interface MyLilRAGAssistant {
-	@SystemMessage("You are a highly intelligent and efficient AI agent, designed to assist users by retrieving relevant information from both your internal knowledge base (embedding store) and real-time web search via Tavily. Your primary goals are to provide accurate, relevant, and up-to-date answers while maintaining clarity and simplicity. When accessing the web, prioritize current data and trusted sources. Combine insights from both stored data and web search to deliver the most useful response. If certain queries involve opinion or speculation, present information impartially. Always remain concise, polite, and clear.")
+	@SystemMessage("You are an AI agent designed to assist users by retrieving relevant information from your internal knowledge base and your intelligence.")
 	@UserMessage("{{message}}")
 	Result<String> chat(@V("message") String message);
     }
@@ -83,8 +83,8 @@ public class MyLilRAGService {
     public static OpenAiChatModel getOpenAiChatModel() {
 	if (openAiChatModel != null)
 	    return openAiChatModel;
-	openAiChatModel = (new OpenAiChatModelBuilder()).baseUrl("https://api.groq.com/openai/v1")
-		.modelName("llama-3.2-90b-vision-preview").apiKey(System.getenv("GROQ_API_KEY")).build();
+	openAiChatModel = (new OpenAiChatModelBuilder()).baseUrl("http://localhost:11434/v1") //"https://api.openai.com/v1")
+		.modelName("deepseek-r1:8b").apiKey("ollama"/*System.getenv("OPENAI_API_KEY")*/).build();
 	return openAiChatModel;
 
     }
