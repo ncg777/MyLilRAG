@@ -191,6 +191,8 @@ public class MyLilRAG {
 	btnClear.setEnabled(v && this.lastEmail != null);
 	btnLoadEml.setEnabled(v);
 	textSubject.setEnabled(v);
+	comboUserPersona.setEnabled(v);
+	comboAgentPersona.setEnabled(v);
     }
     private String lastEmail = null;
     private static String getSubject(String mail) {
@@ -286,7 +288,7 @@ public class MyLilRAG {
 	    textAreaOutput.setText(ans);
 	    textAreaOutput.setCaretPosition(0);
 	    attachments.clear();
-	    lblFiles.setText("");
+	    textAreaFiles.setText("");
 	    textAreaInput.setText("");
 	    endisable(true);
 	}).start();
@@ -309,7 +311,6 @@ public class MyLilRAG {
     }
     
     private JButton btnAttachFiles;
-    private JLabel lblFiles;
     private JButton btnClearFiles;
     private JButton btnLoadEml;
     private JaggedList<String> getPersonaFromName(String name) {
@@ -329,6 +330,7 @@ public class MyLilRAG {
     
     private JComboBox<String> comboUserPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
     private JComboBox<String> comboAgentPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
+    private JTextArea textAreaFiles;
     private void initialize() {
 	frmMylilrag = new JFrame();
 	frmMylilrag.getContentPane().setPreferredSize(new Dimension(550, 550));
@@ -421,7 +423,7 @@ public class MyLilRAG {
 			}
 			attachments.removeAll(fileList);
 			attachments.addAll(fileList);
-			lblFiles.setText(Joiner.on(", ").join(fileList));
+			textAreaFiles.setText(Joiner.on("\n").join(attachments));
 		    }
 		}
 	});
@@ -430,7 +432,7 @@ public class MyLilRAG {
 	btnClearFiles.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
 		    attachments.clear();
-		    lblFiles.setText("");
+		    textAreaFiles.setText("");
 		}
 	});
 	
@@ -481,13 +483,13 @@ public class MyLilRAG {
 				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 					.addGroup(groupLayout.createSequentialGroup()
 						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-							.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 763, Short.MAX_VALUE)
+							.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 750, Short.MAX_VALUE)
 							.addGroup(groupLayout.createSequentialGroup()
 								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 									.addGroup(groupLayout.createSequentialGroup()
 										.addComponent(lblNewLabel_6, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
 										.addPreferredGap(ComponentPlacement.RELATED)
-										.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 461, Short.MAX_VALUE)
+										.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 448, Short.MAX_VALUE)
 										.addPreferredGap(ComponentPlacement.RELATED)
 										.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 92, GroupLayout.PREFERRED_SIZE))
 									.addComponent(scrollPane, 0, 0, Short.MAX_VALUE)
@@ -513,20 +515,20 @@ public class MyLilRAG {
 											.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 156, GroupLayout.PREFERRED_SIZE))))
 								.addGap(130))
 							.addGroup(groupLayout.createSequentialGroup()
-								.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-									.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
+								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+									.addGroup(groupLayout.createSequentialGroup()
 										.addComponent(btnAttachFiles)
 										.addPreferredGap(ComponentPlacement.RELATED)
 										.addComponent(btnClearFiles)
 										.addPreferredGap(ComponentPlacement.RELATED)
 										.addComponent(scrollPane_2, GroupLayout.DEFAULT_SIZE, 444, Short.MAX_VALUE))
-									.addComponent(btnGen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 635, Short.MAX_VALUE)
-									.addComponent(scrollPane_1, Alignment.LEADING))
+									.addComponent(btnGen, GroupLayout.DEFAULT_SIZE, 622, Short.MAX_VALUE)
+									.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 622, Short.MAX_VALUE))
 								.addGap(128)))
 						.addGap(0))
 					.addGroup(groupLayout.createSequentialGroup()
 						.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 166, GroupLayout.PREFERRED_SIZE)
-						.addContainerGap(584, Short.MAX_VALUE))))
+						.addContainerGap(490, Short.MAX_VALUE))))
 	);
 	groupLayout.setVerticalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
@@ -559,7 +561,7 @@ public class MyLilRAG {
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(lblNewLabel)
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE)
+				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 76, Short.MAX_VALUE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(btnGen)
 				.addPreferredGap(ComponentPlacement.RELATED)
@@ -571,11 +573,12 @@ public class MyLilRAG {
 						.addGap(9)
 						.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
 					.addComponent(scrollPane_2, GroupLayout.PREFERRED_SIZE, 54, GroupLayout.PREFERRED_SIZE))
-				.addGap(31))
+				.addGap(39))
 	);
 	
-	lblFiles = new JLabel("");
-	scrollPane_2.setViewportView(lblFiles);
+	textAreaFiles = new JTextArea();
+	textAreaFiles.setEditable(false);
+	scrollPane_2.setViewportView(textAreaFiles);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
 	MyLilRAGService.setPrintToOutput((s) -> printToOutput(s));
 	
