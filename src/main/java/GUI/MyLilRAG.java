@@ -16,6 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.awt.event.ActionEvent;
 
 import javax.swing.DefaultComboBoxModel;
@@ -24,13 +25,20 @@ import javax.swing.GroupLayout.Alignment;
 
 import Services.MyLilRAGService;
 import javax.swing.LayoutStyle.ComponentPlacement;
-
+import javax.swing.filechooser.FileFilter;
 import javax.swing.JTextField;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
+import java.util.regex.Pattern;
+
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
+import com.google.common.base.Joiner;
+import java.awt.Dimension;
 
 public class MyLilRAG {
 
@@ -85,7 +93,17 @@ public class MyLilRAG {
 	pw.print(mail.toString());
 	pw.flush();
 	pw.close();
-	MyLilRAGService.ingestSingleFile(new File(fn));
+	
+	MyLilRAGService.ingestSingleFile(fn);
+    }
+    private static List<File> attachments = new ArrayList<File>();
+    private static String getBoundary(String from, String to, Date date) {
+	String o = "FROM" + from.toLowerCase() + 
+		"TO" + to.toLowerCase()+ 
+		"DATE" + getTimeStampMail(date).toLowerCase();
+	o = o.replaceAll("(,|:|\\.|\s)", "").replaceAll("@", "AT");
+	
+	return o;
     }
     public static String generateMIMEEmail(
 	    Date now,
@@ -94,7 +112,24 @@ public class MyLilRAG {
             String senderEmail, 
             String destinationName, 
             String destinationEmail, 
-            String content) {
+            String content) {return generateMIMEEmail(
+        	    now,
+        	    subject,
+                    senderName, 
+                    senderEmail, 
+                    destinationName, 
+                    destinationEmail, 
+                    content,null);
+            }
+    public static String generateMIMEEmail(
+	    Date now,
+	    String subject,
+            String senderName, 
+            String senderEmail, 
+            String destinationName, 
+            String destinationEmail, 
+            String content,
+            String asAReplyTo) {
         StringBuilder mimeEmail = new StringBuilder();
         var timestamp = getTimeStampMail(now);
         mimeEmail.append("MIME-Version: 1.0\r\n");
@@ -102,37 +137,82 @@ public class MyLilRAG {
         mimeEmail.append("From: ").append(senderName).append(" <").append(senderEmail).append(">\r\n");
         mimeEmail.append("To: ").append(destinationName).append(" <").append(destinationEmail).append(">\r\n");
         mimeEmail.append("Subject: ").append(subject + "\r\n");
-        mimeEmail.append("Content-Type: text/plain; charset=UTF-8\r\n");
-        mimeEmail.append("Content-Transfer-Encoding: 7bit\r\n");
-        mimeEmail.append("\r\n");
-        mimeEmail.append(content);
+    
+        var boundary = getBoundary(senderEmail, destinationEmail, now);
+        mimeEmail.append("Content-Type: multipart/mixed; boundary=\"" + boundary + "\"\r\n\r\n");
         
+        mimeEmail.append("--" + boundary + "\r\n");
+        mimeEmail.append("Content-Type: text/plain; charset=UTF-8\r\n");
+	mimeEmail.append("Content-Transfer-Encoding: 7bit\r\n\r\n");
+        mimeEmail.append(content + "\r\n\r\n");
+        
+        for(var f : attachments) {
+    	    mimeEmail.append("--" + boundary + "\r\n");
+    	
+    	    mimeEmail.append("Content-Type: text/plain; charset=UTF-8\r\n");
+    	    mimeEmail.append("Content-Disposition: attachment; filename=\"" + f.getName() + "\"\r\n");
+    	    mimeEmail.append("Content-Transfer-Encoding: 7bit\r\n\r\n");
+            try {
+        	mimeEmail.append(Joiner.on("\n").join(Files.readAllLines(f.toPath()))+"\r\n");
+	     } catch (IOException e) {
+		 e.printStackTrace();
+	     }
+        	
+        }
+        if(asAReplyTo!= null) {
+            mimeEmail.append("--" + boundary + "\r\n");
+            mimeEmail.append("Content-Type: message/rfc822" + "\r\n\r\n");
+            var s = asAReplyTo.replace("MIME-Version: 1.0", "").trim();
+            mimeEmail.append(s + "\r\n");
+            
+        }
+        mimeEmail.append("--" + boundary + "--");
         return mimeEmail.toString();
     }
     private void endisable(boolean v) {
-	btnClear.setEnabled(v);
 	btnAIFollowUp.setEnabled(v);
 	btnGen.setEnabled(v);
 	textAreaInput.setEnabled(v);
 	comboEndpoints.setEnabled(v);
 	comboModel.setEnabled(v);
-	textSubject.setEnabled(v);
 	textUserName.setEnabled(v);
 	textUserEmail.setEnabled(v);
 	textOtherEmail.setEnabled(v);
 	textOtherName.setEnabled(v);
+	btnAttachFiles.setEnabled(v);
+	btnClearFiles.setEnabled(v);
+	btnClear.setEnabled(v && this.lastEmail != null);
+	btnLoadEml.setEnabled(v);
+	textSubject.setEnabled(v && this.lastEmail==null);
     }
+    private String lastEmail = null;
+    private static String getSubject(String mail) {
+	var pat = Pattern.compile("Subject: (?<subject>.+)", 0);
+	var matcher = pat.matcher(mail);
+
+	for(var match :matcher.results().toList()) {
+	    return match.group("subject");
+
+	}
+	return "";
+    }
+    private void setLastMail(String mail) {
+	textSubject.setText("RE: "+ getSubject(mail));
+	textSubject.setEnabled(false);
+	btnClear.setEnabled(true);
+	this.lastEmail = mail;
+	this.textAreaOutput.setText(mail);
+    }
+    
     private void interact(String str) {
 	new Thread(() -> {
 	    endisable(false);
 	    var now = new Date();
 	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + textUserEmail.getText() + " TO " + textOtherEmail.getText()+".eml";
-	    var mail = generateMIMEEmail(now, textSubject.getText(), textUserName.getText(), textUserEmail.getText(), textOtherName.getText(), textOtherEmail.getText(),str);
 	    
-	    textSubject.setText("");
-	    textAreaInput.setText("");
-
-	    printToOutput("=== " +textUserName.getText() +  " ===\n" + mail + "\n");
+	    var mail = generateMIMEEmail(now, textSubject.getText(), textUserName.getText(), textUserEmail.getText(), textOtherName.getText(), textOtherEmail.getText(),str, lastEmail);
+	    
+	    //printToOutput("=== " +textUserName.getText() +  " ===\n" + mail + "\n");
 	    try {
 		saveEmail(fn, mail);
 	    } catch (FileNotFoundException e) {
@@ -149,8 +229,9 @@ public class MyLilRAG {
 	    var ans = answer.content();
 	    // Get the updated date
 	    now = calendar.getTime();
-	    if(ans.startsWith("```mime")) {
-		ans = ans.substring(8);
+	   
+	    if(ans.startsWith("```")) {
+		ans = ans.substring(ans.indexOf("\n")+1);
 		ans = ans.substring(0, ans.length()-3);
 	    }
 	    var provided_date = ans.split("\n")[1];
@@ -165,8 +246,14 @@ public class MyLilRAG {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
 	    }
-	    printToOutput("=== " + textOtherName.getText()  + " ===\n" + ans + "\n");
 	    
+	    this.setLastMail(ans);
+	    
+	    //printToOutput("=== " + textOtherName.getText()  + " ===\n" + ans + "\n");
+	    textAreaOutput.setText(ans);
+	    textAreaOutput.setCaretPosition(0);
+	    attachments.clear();
+	    textAreaInput.setText("");
 	    endisable(true);
 	}).start();
     }
@@ -192,10 +279,16 @@ public class MyLilRAG {
 	    return null;
 	}
     }
+    
+    private JButton btnAttachFiles;
+    private JLabel lblFiles;
+    private JButton btnClearFiles;
+    private JButton btnLoadEml;
     private void initialize() {
 	frmMylilrag = new JFrame();
+	frmMylilrag.getContentPane().setPreferredSize(new Dimension(550, 550));
 	frmMylilrag.setTitle("MyLilRAG");
-	frmMylilrag.setBounds(100, 100, 928, 554);
+	frmMylilrag.setBounds(100, 100, 740, 592);
 	frmMylilrag.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 	JScrollPane scrollPane = new JScrollPane();
@@ -264,7 +357,6 @@ public class MyLilRAG {
 	lblNewLabel_6 = new JLabel("Subject:");
 	
 	textSubject = new JTextField();
-	textSubject.setColumns(10);
 	
 	JLabel lblNewLabel_7 = new JLabel("Model:");
 	comboModel = new JComboBox<String>(getComboModel());
@@ -282,7 +374,73 @@ public class MyLilRAG {
 	btnClear = new JButton("Clear");
 	btnClear.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
+		    lastEmail = null;
+		    textSubject.setText(lastEmail);
+		    endisable(true);
 		    textAreaOutput.setText("");
+		}
+	});
+	
+	btnAttachFiles = new JButton("Attach files");
+	btnAttachFiles.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    JFileChooser fileChooser = new JFileChooser();
+		    fileChooser.setMultiSelectionEnabled(true);
+
+		    int returnValue = fileChooser.showOpenDialog(frmMylilrag);
+		    if (returnValue == JFileChooser.APPROVE_OPTION) {
+			File[] selectedFiles = fileChooser.getSelectedFiles();
+			List<File> fileList = new ArrayList<>();
+			for (File file : selectedFiles) {
+			    fileList.add(file);
+			}
+			attachments.removeAll(fileList);
+			attachments.addAll(fileList);
+			lblFiles.setText(Joiner.on(", ").join(fileList));
+		    }
+		}
+	});
+	
+	lblFiles = new JLabel("");
+	
+	btnClearFiles = new JButton("Clear files");
+	btnClearFiles.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    attachments.clear();
+		    lblFiles.setText("");
+		}
+	});
+	
+	btnLoadEml = new JButton("Load EML");
+	btnLoadEml.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    JFileChooser fileChooser = new JFileChooser();
+		    fileChooser.setFileFilter(new FileFilter() {
+		        
+		        @Override
+		        public String getDescription() {
+		    	return "Email (*.eml)";
+		        }
+		        
+		        @Override
+		        public boolean accept(File f) {
+		    	
+		    		return f.isDirectory() || f.getName().endsWith(".eml");
+		        }
+		    });
+
+		    int returnValue = fileChooser.showOpenDialog(frmMylilrag);
+		    if (returnValue == JFileChooser.APPROVE_OPTION) {
+			File selectedFile = fileChooser.getSelectedFile();
+			try {
+			    String mail = Joiner.on("\n").join(Files.readAllLines(selectedFile.toPath()));
+			    setLastMail(mail);
+			} catch (IOException e1) {
+			    // TODO Auto-generated catch block
+			    e1.printStackTrace();
+			}
+			
+		    }
 		}
 	});
 	
@@ -293,52 +451,57 @@ public class MyLilRAG {
 				.addContainerGap()
 				.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
 					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
-							.addComponent(lblNewLabel_8, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-							.addComponent(lblNewLabel_2, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-							.addComponent(lblNewLabel_1, GroupLayout.DEFAULT_SIZE, 89, Short.MAX_VALUE))
+						.addComponent(lblNewLabel_5)
 						.addPreferredGap(ComponentPlacement.RELATED)
-						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-							.addComponent(textUserName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-							.addComponent(textUserEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-							.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
-						.addPreferredGap(ComponentPlacement.RELATED)
+						.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 156, GroupLayout.PREFERRED_SIZE)
+						.addGap(816))
+					.addGroup(groupLayout.createSequentialGroup()
 						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 							.addGroup(groupLayout.createSequentialGroup()
-								.addComponent(lblNewLabel_4, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE)
-								.addGap(4)
-								.addComponent(textOtherName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
-							.addGroup(groupLayout.createSequentialGroup()
-								.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-									.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 86, GroupLayout.PREFERRED_SIZE)
-									.addComponent(lblNewLabel_3, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE))
-								.addGap(4)
-								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-									.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-									.addComponent(textOtherEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))))
-						.addGap(250))
+								.addComponent(btnAttachFiles)
+								.addPreferredGap(ComponentPlacement.RELATED)
+								.addComponent(btnClearFiles)
+								.addPreferredGap(ComponentPlacement.RELATED)
+								.addComponent(lblFiles, GroupLayout.DEFAULT_SIZE, 474, Short.MAX_VALUE))
+							.addComponent(btnGen, GroupLayout.DEFAULT_SIZE, 650, Short.MAX_VALUE)
+							.addComponent(btnAIFollowUp, Alignment.TRAILING, GroupLayout.PREFERRED_SIZE, 646, GroupLayout.PREFERRED_SIZE)
+							.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 650, Short.MAX_VALUE))
+						.addGap(347))
 					.addGroup(groupLayout.createSequentialGroup()
-						.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 891, Short.MAX_VALUE)
-						.addGap(11))
-					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-							.addComponent(scrollPane_1, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 879, Short.MAX_VALUE)
-							.addComponent(btnAIFollowUp, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 879, Short.MAX_VALUE)
-							.addComponent(btnGen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 879, Short.MAX_VALUE))
-						.addGap(23))
-					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-							.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 881, Short.MAX_VALUE)
+						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+							.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 650, Short.MAX_VALUE)
 							.addGroup(groupLayout.createSequentialGroup()
 								.addComponent(lblNewLabel_6, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
 								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 807, Short.MAX_VALUE)))
-						.addGap(21))
-					.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
-						.addComponent(lblNewLabel_5)
-						.addGap(18)
-						.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 82, GroupLayout.PREFERRED_SIZE)
-						.addContainerGap())))
+								.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 488, Short.MAX_VALUE)
+								.addPreferredGap(ComponentPlacement.RELATED)
+								.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 82, GroupLayout.PREFERRED_SIZE))
+							.addComponent(scrollPane, 0, 0, Short.MAX_VALUE)
+							.addGroup(groupLayout.createSequentialGroup()
+								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
+									.addComponent(lblNewLabel_8, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+									.addComponent(lblNewLabel_2, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+									.addComponent(lblNewLabel_1, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE))
+								.addPreferredGap(ComponentPlacement.RELATED)
+								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+									.addComponent(textUserName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
+									.addComponent(textUserEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
+									.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
+								.addPreferredGap(ComponentPlacement.RELATED)
+								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+									.addGroup(groupLayout.createSequentialGroup()
+										.addComponent(lblNewLabel_4, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE)
+										.addGap(4)
+										.addComponent(textOtherName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
+									.addGroup(groupLayout.createSequentialGroup()
+										.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+											.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 86, GroupLayout.PREFERRED_SIZE)
+											.addComponent(lblNewLabel_3, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE))
+										.addGap(4)
+										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+											.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
+											.addComponent(textOtherEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))))))
+						.addGap(347))))
 	);
 	groupLayout.setVerticalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
@@ -372,32 +535,37 @@ public class MyLilRAG {
 				.addGap(8)
 				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
 					.addComponent(lblNewLabel_5)
-					.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
+					.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(scrollPane, GroupLayout.PREFERRED_SIZE, 162, GroupLayout.PREFERRED_SIZE)
+				.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 162, Short.MAX_VALUE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
 					.addComponent(lblNewLabel_6)
-					.addComponent(textSubject, GroupLayout.PREFERRED_SIZE, 19, GroupLayout.PREFERRED_SIZE))
+					.addComponent(textSubject, GroupLayout.PREFERRED_SIZE, 19, GroupLayout.PREFERRED_SIZE)
+					.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(lblNewLabel)
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(scrollPane_1, GroupLayout.PREFERRED_SIZE, 113, GroupLayout.PREFERRED_SIZE)
+				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 113, Short.MAX_VALUE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(btnGen)
 				.addPreferredGap(ComponentPlacement.RELATED)
+				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+					.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
+						.addComponent(btnAttachFiles)
+						.addComponent(btnClearFiles))
+					.addComponent(lblFiles, GroupLayout.PREFERRED_SIZE, 21, GroupLayout.PREFERRED_SIZE))
+				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE)
-				.addContainerGap(28, Short.MAX_VALUE))
+				.addGap(28))
 	);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
 	MyLilRAGService.setPrintToOutput((s) -> printToOutput(s));
 	
 	new Thread(() -> {
-	    btnGen.setEnabled(false);
-	    textAreaInput.setEnabled(false);
+	    endisable(false);
 	    MyLilRAGService.ingest();
-	    btnGen.setEnabled(true);
-	    textAreaInput.setEnabled(true);
+	    endisable(true);
 
 	}).start();
 

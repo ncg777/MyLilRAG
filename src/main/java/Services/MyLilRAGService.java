@@ -10,7 +10,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeMap;
 import java.util.function.Consumer;
 import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonParseException;
@@ -133,21 +132,53 @@ public class MyLilRAGService {
 	}
 	
     };
-    private static TreeMap<AssistantId, MyLilRAGAssistant> assistants = new TreeMap<AssistantId, MyLilRAGAssistant>();
+    //private static TreeMap<AssistantId, MyLilRAGAssistant> assistants = new TreeMap<AssistantId, MyLilRAGAssistant>();
     public static MyLilRAGAssistant getAssistant(String model, String sender, String senderEmail, String other, String otherEmail) {
-	var r =  new AssistantId(sender, senderEmail, other, otherEmail);
-	if (assistants.get(r) != null)
-	    return assistants.get(r);
+	//var r =  new AssistantId(sender, senderEmail, other, otherEmail);
+	//if (assistants.get(r) != null)
+	//    return assistants.get(r);
 	
-	assistants.put(r, AiServices.builder(MyLilRAGAssistant.class).systemMessageProvider(
+	//assistants.put(r, 
+	return AiServices.builder(MyLilRAGAssistant.class).systemMessageProvider(
 		(o) -> String.format("Your name is %s. Your email is %s. Your are communicating with %s, whose email is %s.", other, otherEmail, sender, senderEmail) +
-			"You are an AI agent designed to assist in solving problems collaboratively with other agents through email exchange and by retrieving relevant information from your memory, your internal knowledge base and your intelligence. You shall answer to the agent you are in communication with with a single email message dated at precisely and just only 1 second after the datetime of the email the agent sent you. Your answer shall be in valid MIME email format with both the 'from' and 'to' email addresses, the names and a relevant subject. Your answer may also contain attachments in BASE64. Your answer will be saved to file verbatim by the system in the knowledge base as an eml file. Your answer shall follow the MIME email format strictly. The eml file saved by the system should be readable by any mail program such as Mozilla Thunderbird." 
-			
+"""
+You are an AI agent designed to assist in solving problems collaboratively with 
+other agents through email exchange and by retrieving relevant information from 
+your memory, your internal knowledge base and your intelligence. You shall 
+answer to the agent with which you are in communication with a multipart email 
+message in MIME format. Your mail shall have 
+Content-Type 'multipart/mixed' with a sound boundary argument. A sound boundary argument
+could be for example 'FROM<FROM>TO<TO>DATE<DATE>', where <FROM>, 
+<TO> and <DATE> are replaced by the from and to email addresses (with the '@' replaced by 'AT') and <DATE> is 
+the date of the reply, all with spaces, colons, commas and punctuation removed. 
+Your reply shall include the complete verbatim email that is currently being replied to as 
+the last part of the multipart message and it shall have content-type 'message/rfc822';
+its content shall be exactly the input received verbatim with the line "MIME-Version: 1.0" removed. 
+The final MIME part boundary of your reply which should be suffixed with 2 hyphens (--) is always what 
+should be found on the last line of your answer and should match the boundary you have 
+used to delimitate the parts of your reply. Your 
+answer may also contain other parts in the form of file attachments and you 
+shall provide for each attached file the Content-Type line, the 
+file's name on the MIME Content-Disposition line as it should be done, and 
+finally the content of the file in plain text of course. Don't try to encode 
+your files as base64; attach them in plain text. Your answer shall be in valid 
+and well formed MIME format which  alway begins with the line 
+'MIME-Version: 1.0', followed by the date line, which should be precisely and 
+just only 1 second after the datetime of the email you are replying to, then the
+'from' and 'to' lines, with email addresses and names, then a relevant subject 
+line, followed by the Content-Type line, then the Content-Transfer-Encoding line
+and then the content. Your answer will be saved verbatim to file in the 
+knowledge base as an eml file so the format of your answer must follow the MIME
+email format strictly because the eml file needs to be readable by any mail 
+program such as Mozilla Thunderbird or Microsoft Outlook.
+"""
 		)
 		.contentRetriever(getContentRetriever())
-		.chatMemory(MessageWindowChatMemory.withMaxMessages(100)).chatLanguageModel(getOpenAiChatModel(model))
-		.build());
-	return assistants.get(r);
+		.chatMemory(MessageWindowChatMemory.withMaxMessages(5))
+		.chatLanguageModel(getOpenAiChatModel(model))
+		.build();
+		//);
+	//return assistants.get(r);
     }
 
     private static File toIngest = new File("./toIngest");
@@ -167,8 +198,8 @@ public class MyLilRAGService {
 	getIngestor().ingest(Document.from(str));
 	return true;
     }
-    public static void ingestSingleFile(File f) {
-	Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
+    public static void ingestSingleFile(String path) {
+	Document doc = FileSystemDocumentLoader.loadDocument(path, parser);
 	List<TextSegment> segments = splitter.split(doc);
 	for (TextSegment s : segments) {
 	    getIngestor().ingest(Document.from(s.text(), s.metadata()));
@@ -205,7 +236,7 @@ public class MyLilRAGService {
 	} else {
 	    printToOutput.accept("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
 
-	    ingestSingleFile(f);
+	    ingestSingleFile(f.getAbsolutePath());
 
 	    String p = ingested.getPath() + f.getPath().substring(toIngest.getPath().length());
 	    f.renameTo(new File(p));
