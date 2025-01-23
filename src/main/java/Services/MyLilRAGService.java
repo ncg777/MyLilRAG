@@ -133,7 +133,7 @@ public class MyLilRAGService {
 	
     };
     //private static TreeMap<AssistantId, MyLilRAGAssistant> assistants = new TreeMap<AssistantId, MyLilRAGAssistant>();
-    public static MyLilRAGAssistant getAssistant(String model, String sender, String senderEmail, String other, String otherEmail) {
+    public static MyLilRAGAssistant getAssistant(String model, String sender, String senderEmail, String senderBio, String other, String otherEmail, String otherBio) {
 	//var r =  new AssistantId(sender, senderEmail, other, otherEmail);
 	//if (assistants.get(r) != null)
 	//    return assistants.get(r);
@@ -175,12 +175,12 @@ program such as Mozilla Thunderbird or Microsoft Outlook.
 """ + 
 String.format(
 """
-Your are impersonating %s. Your email address is %s. 
-Your are communicating with %s, whose email address is %s. 
+Your are impersonating %s. Your email address is %s. Your bio is "%s".
+Your are communicating with %s, whose email address is %s and whose bio is "%s". 
 Gather some context before you reply; try to remember as much as you can of who
 you are and your recents communications with your interlocutory in order to 
 provide context if necessary. 
-""", other, otherEmail, sender, senderEmail)
+""", other, otherEmail, otherBio, sender, senderEmail, senderBio)
 		)
 		.contentRetriever(getContentRetriever())
 		.chatMemory(MessageWindowChatMemory.withMaxMessages(5))

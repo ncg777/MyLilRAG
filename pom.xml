@@ -39,6 +39,11 @@
 	</build>
 
 	<dependencies>
+		<dependency>
+			<groupId>name.ncg777</groupId>
+			<artifactId>name.ncg777</artifactId>
+			<version>20250121T0126Z</version>
+		</dependency>
 		<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
 		<dependency>
 			<groupId>com.google.guava</groupId>

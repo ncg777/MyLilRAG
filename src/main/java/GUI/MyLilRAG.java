@@ -7,6 +7,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
 import dev.langchain4j.service.Result;
+import name.ncg777.computing.structures.JaggedList;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -37,6 +38,8 @@ import java.util.regex.Pattern;
 
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
+
+import com.fasterxml.jackson.core.JsonParseException;
 import com.google.common.base.Joiner;
 import java.awt.Dimension;
 
@@ -51,6 +54,7 @@ public class MyLilRAG {
 	EventQueue.invokeLater(new Runnable() {
 	    public void run() {
 		try {
+		    personas = JaggedList.parseJSONFile("./personas.json", (s) -> s);
 		    MyLilRAG window = new MyLilRAG();
 		    window.frmMylilrag.setVisible(true);
 		} catch (Exception e) {
@@ -59,11 +63,13 @@ public class MyLilRAG {
 	    }
 	});
     }
-
+    private static JaggedList<String> personas;
     /**
      * Create the application.
+     * @throws IOException 
+     * @throws JsonParseException 
      */
-    public MyLilRAG() {
+    public MyLilRAG() throws JsonParseException, IOException {
 	initialize();
     }
 
@@ -180,10 +186,6 @@ public class MyLilRAG {
 	textAreaInput.setEnabled(v);
 	comboEndpoints.setEnabled(v);
 	comboModel.setEnabled(v);
-	textUserName.setEnabled(v);
-	textUserEmail.setEnabled(v);
-	textAgentEmail.setEnabled(v);
-	textAgentName.setEnabled(v);
 	btnAttachFiles.setEnabled(v);
 	btnClearFiles.setEnabled(v);
 	btnClear.setEnabled(v && this.lastEmail != null);
@@ -217,13 +219,15 @@ public class MyLilRAG {
 	this.textAreaOutput.setText(mail);
     }
     private static String nonFileCharsRegex = "[<>:;?!]";
+    private JaggedList<String> getUserPersona() {return getPersonaFromName(comboUserPersona.getSelectedItem().toString());}
+    private JaggedList<String> getAgentPersona() {return getPersonaFromName(comboAgentPersona.getSelectedItem().toString());}
     private void interact(String str) {
 	new Thread(() -> {
 	    endisable(false);
 	    var now = new Date();
-	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + textUserEmail.getText() + " TO " + textAgentEmail.getText()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
+	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + getUserPersona().get(1).getValue() + " TO " + getAgentPersona().get(1).getValue()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
 	    
-	    var mail = generateMIMEEmail(now, textSubject.getText(), textUserName.getText(), textUserEmail.getText(), textAgentName.getText(), textAgentEmail.getText(),str, lastEmail);
+	    var mail = generateMIMEEmail(now, textSubject.getText(), getUserPersona().get(0).getValue(), getUserPersona().get(1).getValue(), getAgentPersona().get(0).getValue(), getAgentPersona().get(1).getValue(), str, lastEmail);
 	    
 	    //printToOutput("=== " +textUserName.getText() +  " ===\n" + mail + "\n");
 	    try {
@@ -232,7 +236,12 @@ public class MyLilRAG {
 		e.printStackTrace();
 	    }
 	    Result<String> answer = MyLilRAGService.getAssistant(comboModel.getSelectedItem().toString(),
-		    textUserName.getText(),textUserEmail.getText(),textAgentName.getText(),textAgentEmail.getText())
+		    getUserPersona().get(0).getValue(),
+		    getUserPersona().get(1).getValue(),
+		    getUserPersona().get(2).getValue(),
+		    getAgentPersona().get(0).getValue(),
+		    getAgentPersona().get(1).getValue(),
+		    getAgentPersona().get(2).getValue())
 		    .chat(mail);
 	    
 	    // Use Calendar to add a second
@@ -254,15 +263,15 @@ public class MyLilRAG {
 	    var boundary_index = ans.indexOf("Content-Type: multipart/mixed; boundary=\"");
 	    if(boundary_index > 0) {
 		var provided_boundary = ans.substring(boundary_index+41, ans.indexOf('"', boundary_index+42));
-		ans = ans.replaceAll(provided_boundary, getBoundary(textAgentEmail.getText(),textUserEmail.getText(),now));
+		ans = ans.replaceAll(provided_boundary, getBoundary(getAgentPersona().get(1).getValue(),getUserPersona().get(1).getValue(),now));
 	    }
 	    var provided_date = ans.split("\n")[1];
 	    if(provided_date.startsWith("Date: ")) {
 		ans  = ans.replace(provided_date, "Date: " + getTimeStampMail(now));
 	    }
 	    fn = "./archive/" + getTimeStamp(now) + 
-		    " FROM " + textAgentEmail.getText() + 
-		    " TO " + textUserEmail.getText() +
+		    " FROM " + getAgentPersona().get(1).getValue() + 
+		    " TO " + getUserPersona().get(1).getValue() +
 		    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "") + ".eml";
 	    try {
 		saveEmail(fn, ans);
@@ -283,12 +292,6 @@ public class MyLilRAG {
     }
     private JButton btnGen;
     JButton btnAIFollowUp;
-    private JTextField textUserName;
-    private JTextField textUserEmail;
-    private JTextField textAgentEmail;
-    private JLabel lblNewLabel_3;
-    private JLabel lblNewLabel_4;
-    private JTextField textAgentName;
     private JLabel lblNewLabel_5;
     private JLabel lblNewLabel_6;
     private JTextField textSubject;
@@ -308,11 +311,28 @@ public class MyLilRAG {
     private JLabel lblFiles;
     private JButton btnClearFiles;
     private JButton btnLoadEml;
+    private JaggedList<String> getPersonaFromName(String name) {
+	for(int j=0; j < personas.size(); j++) {
+	    if(personas.get(j).get(0).getValue().equals(name)) return personas.get(j);
+	}
+	return null;
+    }
+    
+    private String[] getPersonaNames() {
+	var o = new ArrayList<String>();
+	for(int j=0; j < personas.size(); j++) {
+	    o.add(personas.get(j).get(0).getValue());
+	}
+	return o.toArray(new String[0]);
+    }
+    
+    private JComboBox<String> comboUserPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
+    private JComboBox<String> comboAgentPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
     private void initialize() {
 	frmMylilrag = new JFrame();
 	frmMylilrag.getContentPane().setPreferredSize(new Dimension(550, 550));
 	frmMylilrag.setTitle("MyLilRAG");
-	frmMylilrag.setBounds(100, 100, 740, 592);
+	frmMylilrag.setBounds(100, 100, 682, 574);
 	frmMylilrag.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 	JScrollPane scrollPane = new JScrollPane();
@@ -352,31 +372,11 @@ public class MyLilRAG {
 		}
 	});
 	
-	JLabel lblNewLabel_1 = new JLabel("User Name:");
+	JLabel lblNewLabel_1 = new JLabel("User Persona:");
 	
-	textUserName = new JTextField();
-	textUserName.setText("The User");
-	textUserName.setColumns(10);
+	JLabel lblNewLabel_2 = new JLabel("Agent Persona:");
 	
-	JLabel lblNewLabel_2 = new JLabel("User email:");
-	
-	textUserEmail = new JTextField();
-	textUserEmail.setText("the.user@mail.com");
-	textUserEmail.setColumns(10);
-	
-	textAgentEmail = new JTextField();
-	textAgentEmail.setText("the.agent@mail.com");
-	textAgentEmail.setColumns(10);
-	
-	lblNewLabel_3 = new JLabel("Agent email:");
-	
-	lblNewLabel_4 = new JLabel("Agent Name:");
-	
-	textAgentName = new JTextField();
-	textAgentName.setText("The Agent");
-	textAgentName.setColumns(10);
-	
-	lblNewLabel_5 = new JLabel("Log:");
+	lblNewLabel_5 = new JLabel("Exchange:");
 	
 	lblNewLabel_6 = new JLabel("Subject:");
 	
@@ -385,7 +385,7 @@ public class MyLilRAG {
 	JLabel lblNewLabel_7 = new JLabel("Model:");
 	comboModel = new JComboBox<String>(getComboModel());
 	
-	lblNewLabel_8 = new JLabel("Endpoint URL:");
+	lblNewLabel_8 = new JLabel("Endpoint:");
 	
 	comboEndpoints = new JComboBox<String>(MyLilRAGService.getEndPoints());
 	comboEndpoints.addActionListener(new ActionListener() {
@@ -468,100 +468,86 @@ public class MyLilRAG {
 		}
 	});
 	
+	comboUserPersona.setSelectedIndex(0);
+	
+	comboAgentPersona.setSelectedIndex(1);;
+	
 	GroupLayout groupLayout = new GroupLayout(frmMylilrag.getContentPane());
 	groupLayout.setHorizontalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
 			.addGroup(groupLayout.createSequentialGroup()
 				.addContainerGap()
-				.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 					.addGroup(groupLayout.createSequentialGroup()
-						.addComponent(lblNewLabel_5)
+						.addComponent(btnAttachFiles)
 						.addPreferredGap(ComponentPlacement.RELATED)
-						.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 156, GroupLayout.PREFERRED_SIZE)
-						.addGap(816))
+						.addComponent(btnClearFiles)
+						.addPreferredGap(ComponentPlacement.RELATED)
+						.addComponent(lblFiles, GroupLayout.DEFAULT_SIZE, 574, Short.MAX_VALUE))
+					.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 750, Short.MAX_VALUE)
 					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-							.addGroup(groupLayout.createSequentialGroup()
-								.addComponent(btnAttachFiles)
-								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(btnClearFiles)
-								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(lblFiles, GroupLayout.DEFAULT_SIZE, 474, Short.MAX_VALUE))
-							.addComponent(btnGen, GroupLayout.DEFAULT_SIZE, 650, Short.MAX_VALUE)
-							.addComponent(btnAIFollowUp, Alignment.TRAILING, GroupLayout.PREFERRED_SIZE, 646, GroupLayout.PREFERRED_SIZE)
-							.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 650, Short.MAX_VALUE))
-						.addGap(347))
-					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-							.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 650, Short.MAX_VALUE)
-							.addGroup(groupLayout.createSequentialGroup()
+						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+							.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
 								.addComponent(lblNewLabel_6, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
 								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 488, Short.MAX_VALUE)
+								.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 448, Short.MAX_VALUE)
 								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 82, GroupLayout.PREFERRED_SIZE))
-							.addComponent(scrollPane, 0, 0, Short.MAX_VALUE)
-							.addGroup(groupLayout.createSequentialGroup()
+								.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 92, GroupLayout.PREFERRED_SIZE))
+							.addComponent(scrollPane, Alignment.LEADING, 0, 0, Short.MAX_VALUE)
+							.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
 								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
-									.addComponent(lblNewLabel_8, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
 									.addComponent(lblNewLabel_2, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-									.addComponent(lblNewLabel_1, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE))
-								.addPreferredGap(ComponentPlacement.RELATED)
-								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-									.addComponent(textUserName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-									.addComponent(textUserEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-									.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
+									.addComponent(lblNewLabel_1, GroupLayout.DEFAULT_SIZE, 89, Short.MAX_VALUE)
+									.addComponent(lblNewLabel_5, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
 								.addPreferredGap(ComponentPlacement.RELATED)
 								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 									.addGroup(groupLayout.createSequentialGroup()
-										.addComponent(lblNewLabel_4, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE)
-										.addGap(4)
-										.addComponent(textAgentName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
-									.addGroup(groupLayout.createSequentialGroup()
-										.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-											.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 86, GroupLayout.PREFERRED_SIZE)
-											.addComponent(lblNewLabel_3, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE))
-										.addGap(4)
+										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+											.addComponent(comboAgentPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE)
+											.addComponent(comboUserPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE))
+										.addPreferredGap(ComponentPlacement.RELATED)
+										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
+											.addComponent(lblNewLabel_8, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+											.addComponent(lblNewLabel_7, GroupLayout.DEFAULT_SIZE, 64, Short.MAX_VALUE))
+										.addPreferredGap(ComponentPlacement.RELATED)
 										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 											.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-											.addComponent(textAgentEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))))))
-						.addGap(347))))
+											.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)))
+									.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 156, GroupLayout.PREFERRED_SIZE))))
+						.addGap(130))
+					.addGroup(groupLayout.createSequentialGroup()
+						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+							.addComponent(btnGen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+							.addComponent(scrollPane_1, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 622, Short.MAX_VALUE))
+						.addGap(128))
+					.addGroup(Alignment.TRAILING, groupLayout.createSequentialGroup()
+						.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 166, GroupLayout.PREFERRED_SIZE)
+						.addGap(480)))
+				.addGap(0))
 	);
 	groupLayout.setVerticalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
 			.addGroup(groupLayout.createSequentialGroup()
 				.addContainerGap()
+				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
+					.addComponent(lblNewLabel_1)
+					.addComponent(comboUserPersona, GroupLayout.PREFERRED_SIZE, 25, GroupLayout.PREFERRED_SIZE)
+					.addComponent(lblNewLabel_8)
+					.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+				.addPreferredGap(ComponentPlacement.RELATED)
 				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 					.addGroup(groupLayout.createSequentialGroup()
 						.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-							.addComponent(lblNewLabel_1)
-							.addComponent(textUserName, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))
+							.addComponent(lblNewLabel_2, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE)
+							.addComponent(comboAgentPersona, GroupLayout.PREFERRED_SIZE, 25, GroupLayout.PREFERRED_SIZE)
+							.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))
 						.addPreferredGap(ComponentPlacement.RELATED)
 						.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-							.addComponent(lblNewLabel_2, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE)
-							.addComponent(textUserEmail, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE)))
-					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-							.addGroup(groupLayout.createSequentialGroup()
-								.addGap(2)
-								.addComponent(lblNewLabel_4))
-							.addComponent(textAgentName, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))
-						.addGap(6)
-						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-							.addComponent(lblNewLabel_3, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE)
-							.addComponent(textAgentEmail, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))))
+							.addComponent(lblNewLabel_5)
+							.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE)))
+					.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE))
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-					.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE)
-					.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE)
-					.addComponent(lblNewLabel_8)
-					.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
-				.addGap(8)
-				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-					.addComponent(lblNewLabel_5)
-					.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
-				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 162, Short.MAX_VALUE)
+				.addComponent(scrollPane, GroupLayout.PREFERRED_SIZE, 198, GroupLayout.PREFERRED_SIZE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
 					.addComponent(lblNewLabel_6)
@@ -570,7 +556,7 @@ public class MyLilRAG {
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(lblNewLabel)
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 113, Short.MAX_VALUE)
+				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 93, Short.MAX_VALUE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(btnGen)
 				.addPreferredGap(ComponentPlacement.RELATED)
