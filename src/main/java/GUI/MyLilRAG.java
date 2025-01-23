@@ -188,7 +188,7 @@ public class MyLilRAG {
 	btnClearFiles.setEnabled(v);
 	btnClear.setEnabled(v && this.lastEmail != null);
 	btnLoadEml.setEnabled(v);
-	textSubject.setEnabled(v && this.lastEmail==null);
+	textSubject.setEnabled(v);
     }
     private String lastEmail = null;
     private static String getSubject(String mail) {
