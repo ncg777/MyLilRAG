@@ -90,6 +90,7 @@ public class MyLilRAGService {
     private static OpenAiChatModelBuilder getModelBuilder(String modelName) {
 	return (new OpenAiChatModelBuilder())
 		.baseUrl(baseUrl)
+		.timeout(Duration.ZERO)
 		.modelName(modelName)
 		.apiKey(getAPIKey());
     }
