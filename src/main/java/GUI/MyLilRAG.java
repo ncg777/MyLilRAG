@@ -94,7 +94,7 @@ public class MyLilRAG {
 	pw.flush();
 	pw.close();
 	
-	MyLilRAGService.ingestSingleFile(fn);
+	//MyLilRAGService.ingestSingleFile(fn);
     }
     private static List<File> attachments = new ArrayList<File>();
     private static String getBoundary(String from, String to, Date date) {

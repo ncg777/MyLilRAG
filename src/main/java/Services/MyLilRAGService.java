@@ -162,10 +162,10 @@ shall provide for each attached file the Content-Type line, the
 file's name on the MIME Content-Disposition line as it should be done, and 
 finally the content of the file in plain text of course. Don't try to encode 
 your files as base64; attach them in plain text. Your answer shall be in valid 
-and well formed MIME format which  alway begins with the line 
-'MIME-Version: 1.0', followed by the date line, which should be precisely and 
-just only 1 second after the datetime of the email you are replying to, then the
-'from' and 'to' lines, with email addresses and names, then a relevant subject 
+and well formed MIME format which and respect a certain order, which means to alway begin your answer with the line 
+'MIME-Version: 1.0', followed by the Date line, which should be precisely and 
+just only 1 second after the datetime of the email you are replying to, then should follow the
+'from' and 'to' lines, with email addresses and names, then should follow a relevant Subject 
 line, followed by the Content-Type line, then the Content-Transfer-Encoding line
 and then the content. Your answer will be saved verbatim to file in the 
 knowledge base as an eml file so the format of your answer must follow the MIME
