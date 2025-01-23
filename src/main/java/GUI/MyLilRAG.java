@@ -163,6 +163,7 @@ public class MyLilRAG {
             mimeEmail.append("--" + boundary + "\r\n");
             
             mimeEmail.append("Content-Type: message/rfc822" + "\r\n\r\n");
+            
             var s = asAReplyTo;
             if(s.startsWith("MIME-Version: 1.0")) s = s.replaceFirst("MIME-Version: 1.0", "").trim();
             while((s.startsWith("\s") || s.startsWith("\r") || s.startsWith("\n")) && !s.isBlank()) {
@@ -181,8 +182,8 @@ public class MyLilRAG {
 	comboModel.setEnabled(v);
 	textUserName.setEnabled(v);
 	textUserEmail.setEnabled(v);
-	textOtherEmail.setEnabled(v);
-	textOtherName.setEnabled(v);
+	textAgentEmail.setEnabled(v);
+	textAgentName.setEnabled(v);
 	btnAttachFiles.setEnabled(v);
 	btnClearFiles.setEnabled(v);
 	btnClear.setEnabled(v && this.lastEmail != null);
@@ -200,6 +201,14 @@ public class MyLilRAG {
 	}
 	return "";
     }
+    private String getSubjectFromMail(String mail) {
+	var subject_index = mail.indexOf("Subject: ");
+	var reply_subject = "RE " + textSubject.getText();
+	if(subject_index > 0) {
+	    reply_subject = mail.substring(subject_index+9, mail.indexOf("\n", subject_index+9));
+	}
+	return reply_subject;
+    }
     private void setLastMail(String mail) {
 	textSubject.setText("RE: "+ getSubject(mail));
 	textSubject.setEnabled(false);
@@ -207,14 +216,14 @@ public class MyLilRAG {
 	this.lastEmail = mail;
 	this.textAreaOutput.setText(mail);
     }
-    
+    private static String nonFileCharsRegex = "[<>:;?!]";
     private void interact(String str) {
 	new Thread(() -> {
 	    endisable(false);
 	    var now = new Date();
-	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + textUserEmail.getText() + " TO " + textOtherEmail.getText()+".eml";
+	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + textUserEmail.getText() + " TO " + textAgentEmail.getText()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
 	    
-	    var mail = generateMIMEEmail(now, textSubject.getText(), textUserName.getText(), textUserEmail.getText(), textOtherName.getText(), textOtherEmail.getText(),str, lastEmail);
+	    var mail = generateMIMEEmail(now, textSubject.getText(), textUserName.getText(), textUserEmail.getText(), textAgentName.getText(), textAgentEmail.getText(),str, lastEmail);
 	    
 	    //printToOutput("=== " +textUserName.getText() +  " ===\n" + mail + "\n");
 	    try {
@@ -223,7 +232,7 @@ public class MyLilRAG {
 		e.printStackTrace();
 	    }
 	    Result<String> answer = MyLilRAGService.getAssistant(comboModel.getSelectedItem().toString(),
-		    textUserName.getText(),textUserEmail.getText(),textOtherName.getText(),textOtherEmail.getText())
+		    textUserName.getText(),textUserEmail.getText(),textAgentName.getText(),textAgentEmail.getText())
 		    .chat(mail);
 	    
 	    // Use Calendar to add a second
@@ -235,15 +244,26 @@ public class MyLilRAG {
 	    now = calendar.getTime();
 	    ans = ans.trim();
 	    if(ans.startsWith("```")) {
-		ans = ans.substring(ans.indexOf("\n")+1);
-		ans = ans.substring(0, ans.length()-3);
+		ans = ans.substring(ans.indexOf("\n")+1).trim();
+		
+	    }
+	    while(ans.endsWith("```")) {
+		ans = ans.substring(0,ans.length()-3).trim();
+	    }
+	    
+	    var boundary_index = ans.indexOf("Content-Type: multipart/mixed; boundary=\"");
+	    if(boundary_index > 0) {
+		var provided_boundary = ans.substring(boundary_index+41, ans.indexOf('"', boundary_index+42));
+		ans = ans.replaceAll(provided_boundary, getBoundary(textAgentEmail.getText(),textUserEmail.getText(),now));
 	    }
 	    var provided_date = ans.split("\n")[1];
 	    if(provided_date.startsWith("Date: ")) {
 		ans  = ans.replace(provided_date, "Date: " + getTimeStampMail(now));
 	    }
-	    
-	    fn = "./archive/" + getTimeStamp(now) + " FROM " + textOtherEmail.getText() + " TO " + textUserEmail.getText()+".eml";
+	    fn = "./archive/" + getTimeStamp(now) + 
+		    " FROM " + textAgentEmail.getText() + 
+		    " TO " + textUserEmail.getText() +
+		    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "") + ".eml";
 	    try {
 		saveEmail(fn, ans);
 	    } catch (FileNotFoundException e) {
@@ -253,7 +273,7 @@ public class MyLilRAG {
 	    
 	    this.setLastMail(ans);
 	    
-	    //printToOutput("=== " + textOtherName.getText()  + " ===\n" + ans + "\n");
+	    //printToOutput("=== " + textAgentName.getText()  + " ===\n" + ans + "\n");
 	    textAreaOutput.setText(ans);
 	    textAreaOutput.setCaretPosition(0);
 	    attachments.clear();
@@ -265,10 +285,10 @@ public class MyLilRAG {
     JButton btnAIFollowUp;
     private JTextField textUserName;
     private JTextField textUserEmail;
-    private JTextField textOtherEmail;
+    private JTextField textAgentEmail;
     private JLabel lblNewLabel_3;
     private JLabel lblNewLabel_4;
-    private JTextField textOtherName;
+    private JTextField textAgentName;
     private JLabel lblNewLabel_5;
     private JLabel lblNewLabel_6;
     private JTextField textSubject;
@@ -344,17 +364,17 @@ public class MyLilRAG {
 	textUserEmail.setText("the.user@mail.com");
 	textUserEmail.setColumns(10);
 	
-	textOtherEmail = new JTextField();
-	textOtherEmail.setText("the.other@mail.com");
-	textOtherEmail.setColumns(10);
+	textAgentEmail = new JTextField();
+	textAgentEmail.setText("the.agent@mail.com");
+	textAgentEmail.setColumns(10);
 	
-	lblNewLabel_3 = new JLabel("Other email:");
+	lblNewLabel_3 = new JLabel("Agent email:");
 	
-	lblNewLabel_4 = new JLabel("Other Name:");
+	lblNewLabel_4 = new JLabel("Agent Name:");
 	
-	textOtherName = new JTextField();
-	textOtherName.setText("The Other");
-	textOtherName.setColumns(10);
+	textAgentName = new JTextField();
+	textAgentName.setText("The Agent");
+	textAgentName.setColumns(10);
 	
 	lblNewLabel_5 = new JLabel("Log:");
 	
@@ -496,7 +516,7 @@ public class MyLilRAG {
 									.addGroup(groupLayout.createSequentialGroup()
 										.addComponent(lblNewLabel_4, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE)
 										.addGap(4)
-										.addComponent(textOtherName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
+										.addComponent(textAgentName, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))
 									.addGroup(groupLayout.createSequentialGroup()
 										.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
 											.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 86, GroupLayout.PREFERRED_SIZE)
@@ -504,7 +524,7 @@ public class MyLilRAG {
 										.addGap(4)
 										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 											.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-											.addComponent(textOtherEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))))))
+											.addComponent(textAgentEmail, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE))))))
 						.addGap(347))))
 	);
 	groupLayout.setVerticalGroup(
@@ -525,11 +545,11 @@ public class MyLilRAG {
 							.addGroup(groupLayout.createSequentialGroup()
 								.addGap(2)
 								.addComponent(lblNewLabel_4))
-							.addComponent(textOtherName, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))
+							.addComponent(textAgentName, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))
 						.addGap(6)
 						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 							.addComponent(lblNewLabel_3, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE)
-							.addComponent(textOtherEmail, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))))
+							.addComponent(textAgentEmail, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))))
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
 					.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE)
