@@ -286,6 +286,7 @@ public class MyLilRAG {
 	    textAreaOutput.setText(ans);
 	    textAreaOutput.setCaretPosition(0);
 	    attachments.clear();
+	    lblFiles.setText("");
 	    textAreaInput.setText("");
 	    endisable(true);
 	}).start();
@@ -425,8 +426,6 @@ public class MyLilRAG {
 		}
 	});
 	
-	lblFiles = new JLabel("");
-	
 	btnClearFiles = new JButton("Clear files");
 	btnClearFiles.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
@@ -472,6 +471,8 @@ public class MyLilRAG {
 	
 	comboAgentPersona.setSelectedIndex(1);;
 	
+	JScrollPane scrollPane_2 = new JScrollPane();
+	
 	GroupLayout groupLayout = new GroupLayout(frmMylilrag.getContentPane());
 	groupLayout.setHorizontalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
@@ -479,51 +480,53 @@ public class MyLilRAG {
 				.addContainerGap()
 				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 					.addGroup(groupLayout.createSequentialGroup()
-						.addComponent(btnAttachFiles)
-						.addPreferredGap(ComponentPlacement.RELATED)
-						.addComponent(btnClearFiles)
-						.addPreferredGap(ComponentPlacement.RELATED)
-						.addComponent(lblFiles, GroupLayout.DEFAULT_SIZE, 574, Short.MAX_VALUE))
-					.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 750, Short.MAX_VALUE)
-					.addGroup(groupLayout.createSequentialGroup()
 						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-							.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
-								.addComponent(lblNewLabel_6, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
-								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 448, Short.MAX_VALUE)
-								.addPreferredGap(ComponentPlacement.RELATED)
-								.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 92, GroupLayout.PREFERRED_SIZE))
-							.addComponent(scrollPane, Alignment.LEADING, 0, 0, Short.MAX_VALUE)
-							.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
-								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
-									.addComponent(lblNewLabel_2, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-									.addComponent(lblNewLabel_1, GroupLayout.DEFAULT_SIZE, 89, Short.MAX_VALUE)
-									.addComponent(lblNewLabel_5, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-								.addPreferredGap(ComponentPlacement.RELATED)
+							.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 763, Short.MAX_VALUE)
+							.addGroup(groupLayout.createSequentialGroup()
 								.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 									.addGroup(groupLayout.createSequentialGroup()
-										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-											.addComponent(comboAgentPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE)
-											.addComponent(comboUserPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE))
+										.addComponent(lblNewLabel_6, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
 										.addPreferredGap(ComponentPlacement.RELATED)
+										.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 461, Short.MAX_VALUE)
+										.addPreferredGap(ComponentPlacement.RELATED)
+										.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 92, GroupLayout.PREFERRED_SIZE))
+									.addComponent(scrollPane, 0, 0, Short.MAX_VALUE)
+									.addGroup(groupLayout.createSequentialGroup()
 										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
-											.addComponent(lblNewLabel_8, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-											.addComponent(lblNewLabel_7, GroupLayout.DEFAULT_SIZE, 64, Short.MAX_VALUE))
+											.addComponent(lblNewLabel_2, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+											.addComponent(lblNewLabel_1, GroupLayout.DEFAULT_SIZE, 89, Short.MAX_VALUE)
+											.addComponent(lblNewLabel_5, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
 										.addPreferredGap(ComponentPlacement.RELATED)
 										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-											.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-											.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)))
-									.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 156, GroupLayout.PREFERRED_SIZE))))
-						.addGap(130))
+											.addGroup(groupLayout.createSequentialGroup()
+												.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+													.addComponent(comboAgentPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE)
+													.addComponent(comboUserPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE))
+												.addPreferredGap(ComponentPlacement.RELATED)
+												.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
+													.addComponent(lblNewLabel_8, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+													.addComponent(lblNewLabel_7, GroupLayout.DEFAULT_SIZE, 64, Short.MAX_VALUE))
+												.addPreferredGap(ComponentPlacement.RELATED)
+												.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+													.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
+													.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)))
+											.addComponent(btnLoadEml, GroupLayout.PREFERRED_SIZE, 156, GroupLayout.PREFERRED_SIZE))))
+								.addGap(130))
+							.addGroup(groupLayout.createSequentialGroup()
+								.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+									.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
+										.addComponent(btnAttachFiles)
+										.addPreferredGap(ComponentPlacement.RELATED)
+										.addComponent(btnClearFiles)
+										.addPreferredGap(ComponentPlacement.RELATED)
+										.addComponent(scrollPane_2, GroupLayout.DEFAULT_SIZE, 444, Short.MAX_VALUE))
+									.addComponent(btnGen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 635, Short.MAX_VALUE)
+									.addComponent(scrollPane_1, Alignment.LEADING))
+								.addGap(128)))
+						.addGap(0))
 					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-							.addComponent(btnGen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-							.addComponent(scrollPane_1, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 622, Short.MAX_VALUE))
-						.addGap(128))
-					.addGroup(Alignment.TRAILING, groupLayout.createSequentialGroup()
 						.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 166, GroupLayout.PREFERRED_SIZE)
-						.addGap(480)))
-				.addGap(0))
+						.addContainerGap(584, Short.MAX_VALUE))))
 	);
 	groupLayout.setVerticalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
@@ -556,19 +559,23 @@ public class MyLilRAG {
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(lblNewLabel)
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 93, Short.MAX_VALUE)
+				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 87, Short.MAX_VALUE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(btnGen)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-					.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-						.addComponent(btnAttachFiles)
-						.addComponent(btnClearFiles))
-					.addComponent(lblFiles, GroupLayout.PREFERRED_SIZE, 21, GroupLayout.PREFERRED_SIZE))
-				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE)
-				.addGap(28))
+					.addGroup(groupLayout.createSequentialGroup()
+						.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
+							.addComponent(btnAttachFiles)
+							.addComponent(btnClearFiles))
+						.addGap(9)
+						.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
+					.addComponent(scrollPane_2, GroupLayout.PREFERRED_SIZE, 54, GroupLayout.PREFERRED_SIZE))
+				.addGap(31))
 	);
+	
+	lblFiles = new JLabel("");
+	scrollPane_2.setViewportView(lblFiles);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
 	MyLilRAGService.setPrintToOutput((s) -> printToOutput(s));
 	
