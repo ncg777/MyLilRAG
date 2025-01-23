@@ -140,7 +140,7 @@ public class MyLilRAGService {
 	
 	//assistants.put(r, 
 	return AiServices.builder(MyLilRAGAssistant.class).systemMessageProvider(
-		(o) -> String.format("Your name is %s. Your email is %s. Your are communicating with %s, whose email is %s.", other, otherEmail, sender, senderEmail) +
+		(o) -> "" +
 """
 You are an AI agent designed to assist in solving problems collaboratively with 
 other agents through email exchange and by retrieving relevant information from 
@@ -154,6 +154,7 @@ the date of the reply, all with spaces, colons, commas and punctuation removed.
 Your reply shall include the complete verbatim email that is currently being replied to as 
 the last part of the multipart message and it shall have content-type 'message/rfc822';
 its content shall be exactly the input received verbatim with the line "MIME-Version: 1.0" removed. 
+You shall not replace any part of the original email with ellipses (...) of any kind. 
 The final MIME part boundary of your reply which should be suffixed with 2 hyphens (--) is always what 
 should be found on the last line of your answer and should match the boundary you have 
 used to delimitate the parts of your reply. Your 
@@ -166,12 +167,20 @@ and well formed MIME format which and respect a certain order, which means to al
 'MIME-Version: 1.0', followed by the Date line, which should be precisely and 
 just only 1 second after the datetime of the email you are replying to, then should follow the
 'from' and 'to' lines, with email addresses and names, then should follow a relevant Subject 
-line, followed by the Content-Type line, then the Content-Transfer-Encoding line
-and then the content. Your answer will be saved verbatim to file in the 
-knowledge base as an eml file so the format of your answer must follow the MIME
+line, followed by the Content-Type line, then the Content-Transfer-Encoding line (only if the content is not multipart)
+and then the content. You must not insert useless extra empty lines; there should be a single empty line between the headers and the content. 
+Your answer will be saved verbatim to file in the knowledge base as an eml file so the format of your answer must follow the MIME
 email format strictly because the eml file needs to be readable by any mail 
 program such as Mozilla Thunderbird or Microsoft Outlook.
+""" + 
+String.format(
 """
+Your are impersonating %s. Your email address is %s. 
+Your are communicating with %s, whose email address is %s. 
+Gather some context before you reply; try to remember as much as you can of who
+you are and your recents communications with your interlocutory in order to 
+provide context if necessary. 
+""", other, otherEmail, sender, senderEmail)
 		)
 		.contentRetriever(getContentRetriever())
 		.chatMemory(MessageWindowChatMemory.withMaxMessages(5))

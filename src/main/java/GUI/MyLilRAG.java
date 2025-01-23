@@ -161,13 +161,17 @@ public class MyLilRAG {
         }
         if(asAReplyTo!= null) {
             mimeEmail.append("--" + boundary + "\r\n");
-            mimeEmail.append("Content-Type: message/rfc822" + "\r\n\r\n");
-            var s = asAReplyTo.replace("MIME-Version: 1.0", "").trim();
-            mimeEmail.append(s + "\r\n");
             
+            mimeEmail.append("Content-Type: message/rfc822" + "\r\n\r\n");
+            var s = asAReplyTo;
+            if(s.startsWith("MIME-Version: 1.0")) s = s.replaceFirst("MIME-Version: 1.0", "").trim();
+            while((s.startsWith("\s") || s.startsWith("\r") || s.startsWith("\n")) && !s.isBlank()) {
+        	s = s.substring(1).trim();
+            }
+            mimeEmail.append(s + "\r\n");
         }
         mimeEmail.append("--" + boundary + "--");
-        return mimeEmail.toString();
+        return mimeEmail.toString().trim();
     }
     private void endisable(boolean v) {
 	btnAIFollowUp.setEnabled(v);
