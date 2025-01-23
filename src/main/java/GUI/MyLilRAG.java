@@ -94,7 +94,7 @@ public class MyLilRAG {
 	pw.flush();
 	pw.close();
 	
-	//MyLilRAGService.ingestSingleFile(fn);
+	MyLilRAGService.ingestSingleFile(fn);
     }
     private static List<File> attachments = new ArrayList<File>();
     private static String getBoundary(String from, String to, Date date) {
@@ -229,7 +229,7 @@ public class MyLilRAG {
 	    var ans = answer.content();
 	    // Get the updated date
 	    now = calendar.getTime();
-	   
+	    ans = ans.trim();
 	    if(ans.startsWith("```")) {
 		ans = ans.substring(ans.indexOf("\n")+1);
 		ans = ans.substring(0, ans.length()-3);
