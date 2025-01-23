@@ -1,9 +1,21 @@
 package Services;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 import java.util.function.Consumer;
+import com.fasterxml.jackson.core.JsonFactoryBuilder;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ComparisonChain;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
@@ -20,7 +32,6 @@ import dev.langchain4j.model.openai.OpenAiEmbeddingModel.OpenAiEmbeddingModelBui
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
-import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -29,33 +40,26 @@ import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 
 public class MyLilRAGService {
 
+    
     public static interface MyLilRAGAssistant {
-	@SystemMessage("You are an AI agent designed to assist users by retrieving relevant information from your memory, your internal knowledge base and your intelligence in order to solve problems which is your ultimate purpose.")
 	@UserMessage("{{message}}")
 	Result<String> chat(@V("message") String message);
     }
 
     final private static DocumentParser parser = (new ApacheTikaDocumentParserFactory()).create();
     final private static DocumentSplitter splitter = (new RecursiveDocumentSplitterFactory()).create();
-    private static EmbeddingModel embeddingModel = getEmbeddingModel();
 
     public static EmbeddingModel getEmbeddingModel() {
-	if (embeddingModel != null)
-	    return embeddingModel;
 	OpenAiEmbeddingModelBuilder b2 = new OpenAiEmbeddingModelBuilder();
-	embeddingModel = b2.baseUrl("http://localhost:11434/v1").modelName("nomic-embed-text").apiKey("DUMMY")
+	var embeddingModel = b2.baseUrl("http://localhost:11434/v1").modelName("nomic-embed-text").apiKey("ollama")
 		.timeout(Duration.ZERO).build();
 	return embeddingModel;
 
     }
 
-    private static EmbeddingStore<TextSegment> embeddingStore = getEmbeddingStore();
-
     public static EmbeddingStore<TextSegment> getEmbeddingStore() {
-	if (embeddingStore != null)
-	    return embeddingStore;
 	EmbeddingModel emodel = getEmbeddingModel();
-	embeddingStore = Neo4jEmbeddingStore.builder().withBasicAuth("bolt://0.0.0.0:7687", "neo4j", "")
+	var embeddingStore = Neo4jEmbeddingStore.builder().withBasicAuth("bolt://0.0.0.0:7687", "neo4j", "")
 		.dimension(emodel.dimension()).indexName("ncg777.store.nomic").build();
 
 	return embeddingStore;
@@ -66,47 +70,84 @@ public class MyLilRAGService {
 		.embeddingStore(getEmbeddingStore()).build();
     }
 
-    private static EmbeddingStoreIngestor ingestor = getIngestor();
-
     public static EmbeddingStoreIngestor getIngestor() {
-	if (ingestor != null)
-	    return ingestor;
-	ingestor = EmbeddingStoreIngestor.builder().embeddingModel(getEmbeddingModel())
+	var ingestor = EmbeddingStoreIngestor.builder().embeddingModel(getEmbeddingModel())
 		.embeddingStore(getEmbeddingStore()).build();
 	return ingestor;
     }
-
-    private static MyLilRAGAssistant myLilRAGAssistant = getAssistant();
-
-    private static OpenAiChatModel openAiChatModel = getOpenAiChatModel();
-    private static OpenAiChatModelBuilder getModelBuilder() {
+    public static void setBaseUrl(String str) {
+	baseUrl=str;
+    }
+    private static String getAPIKey() {
+	if(baseUrl.contains("groq")) return System.getenv("GROQ_API_KEY");
+	else if(baseUrl.contains("openai")) return System.getenv("OPENAI_API_KEY");
+	else return "DUMMY";
+    }
+    public static String[] getEndPoints() {
+	String[] o = {"http://localhost:11434/v1","https://api.openai.com/v1", "https://api.groq.com/openai/v1"};
+	return o;
+    }
+    private static String baseUrl = "http://localhost:11434/v1";
+    private static OpenAiChatModelBuilder getModelBuilder(String modelName) {
 	return (new OpenAiChatModelBuilder())
-		.baseUrl("http://localhost:11434/v1")
-		.modelName("llama3.2:3b")
-		.apiKey("ollama");
+		.baseUrl(baseUrl)
+		.modelName(modelName)
+		.apiKey(getAPIKey());
     }
     
-    public static OpenAiChatModel getOpenAiChatModel() {
-	if (openAiChatModel != null)
-	    return openAiChatModel;
-	openAiChatModel = getModelBuilder().build();
-	return openAiChatModel;
+    public static String[] getModels() throws JsonParseException, IOException, InterruptedException, URISyntaxException {
+	HttpClient client = HttpClient.newHttpClient();
 
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(new URI(baseUrl+"/models"))
+                .header("Authorization", "Bearer "+getAPIKey())
+                .GET()
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        if(response.statusCode() == 200) {
+            var b = new JsonFactoryBuilder().build();
+            var str = response.body();
+            var p = b.setCodec(new ObjectMapper()).createParser(str).readValueAsTree();
+            p=p.get("data");
+            var l = new ArrayList<String>();
+            for(int i=0;i<p.size();i++) l.add(p.get(i).get("id").toString().replaceAll("\"",""));
+            l.sort((x,y) -> x.compareTo(y));
+            return l.toArray(new String[0]);
+        }
+        else {return new String[0];}
+    }
+    public static OpenAiChatModel getOpenAiChatModel(String modelName) {
+	return getModelBuilder(modelName).build();
     }
 
-    public static String oneShotChat(String str) {
-	return getModelBuilder().build().generate(str); 
+    public static String oneShotChat(String model, String str) {
+	return getModelBuilder(model).build().generate(str); 
     }
-    
-    public static MyLilRAGAssistant getAssistant() {
-	if (myLilRAGAssistant != null)
-	    return myLilRAGAssistant;
-	myLilRAGAssistant = AiServices.builder(MyLilRAGAssistant.class)
-		.chatMemory(MessageWindowChatMemory.withMaxMessages(100)).chatLanguageModel(getOpenAiChatModel())
-		// .retrievalAugmentor(retrievalAugmentor)
-		.build();
+    private record AssistantId(String sender, String senderEmail, String other, String otherEmail) implements Comparable<AssistantId> {
 
-	return myLilRAGAssistant;
+	@Override
+	public int compareTo(AssistantId o) {
+	    return ComparisonChain.start()
+		    .compare(sender, o.sender).compare(senderEmail, o.senderEmail)
+		    .compare(other, o.other).compare(otherEmail, o.otherEmail).result();
+	}
+	
+    };
+    private static TreeMap<AssistantId, MyLilRAGAssistant> assistants = new TreeMap<AssistantId, MyLilRAGAssistant>();
+    public static MyLilRAGAssistant getAssistant(String model, String sender, String senderEmail, String other, String otherEmail) {
+	var r =  new AssistantId(sender, senderEmail, other, otherEmail);
+	if (assistants.get(r) != null)
+	    return assistants.get(r);
+	
+	assistants.put(r, AiServices.builder(MyLilRAGAssistant.class).systemMessageProvider(
+		(o) -> String.format("Your name is %s. Your email is %s. Your are communicating with %s, whose email is %s.", other, otherEmail, sender, senderEmail) +
+			"You are an AI agent designed to assist in solving problems collaboratively with other agents through email exchange and by retrieving relevant information from your memory, your internal knowledge base and your intelligence. You shall answer to the agent you are in communication with with a single email message dated at precisely and just only 1 second after the datetime of the email the agent sent you. Your answer shall be in valid MIME email format with both the 'from' and 'to' email addresses, the names and a relevant subject. Your answer may also contain attachments in BASE64. Your answer will be saved to file verbatim by the system in the knowledge base as an eml file. Your answer shall follow the MIME email format strictly. The eml file saved by the system should be readable by any mail program such as Mozilla Thunderbird." 
+			
+		)
+		.contentRetriever(getContentRetriever())
+		.chatMemory(MessageWindowChatMemory.withMaxMessages(100)).chatLanguageModel(getOpenAiChatModel(model))
+		.build());
+	return assistants.get(r);
     }
 
     private static File toIngest = new File("./toIngest");
@@ -123,11 +164,17 @@ public class MyLilRAGService {
     }
 
     public static boolean ingestString(String str) {
-	ingestor.ingest(Document.from(str));
+	getIngestor().ingest(Document.from(str));
 	return true;
     }
-    
-    private static boolean ingest(File f) {
+    public static void ingestSingleFile(File f) {
+	Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
+	List<TextSegment> segments = splitter.split(doc);
+	for (TextSegment s : segments) {
+	    getIngestor().ingest(Document.from(s.text(), s.metadata()));
+	}
+    }
+    public static boolean ingest(File f) {
 	if (f.isDirectory()) {
 	    boolean o = false;
 	    if (!f.equals(toIngest)) {
@@ -158,11 +205,7 @@ public class MyLilRAGService {
 	} else {
 	    printToOutput.accept("Ingesting file: " + f.getPath().substring(toIngest.getPath().length()));
 
-	    Document doc = FileSystemDocumentLoader.loadDocument(f.getPath(), parser);
-	    List<TextSegment> segments = splitter.split(doc);
-	    for (TextSegment s : segments) {
-		ingestor.ingest(Document.from(s.text(), s.metadata()));
-	    }
+	    ingestSingleFile(f);
 
 	    String p = ingested.getPath() + f.getPath().substring(toIngest.getPath().length());
 	    f.renameTo(new File(p));
