@@ -191,7 +191,17 @@ public class MyLilRAG {
 	btnClear.setEnabled(v && this.lastEmail != null);
 	btnLoadEml.setEnabled(v);
 	textSubject.setEnabled(v);
+	comboUserPersona.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    clearSubject();
+		}
+	});
 	comboUserPersona.setEnabled(v);
+	comboAgentPersona.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    clearSubject();
+		}
+	});
 	comboAgentPersona.setEnabled(v);
     }
     private String lastEmail = null;
@@ -224,12 +234,17 @@ public class MyLilRAG {
     private JaggedList<String> getUserPersona() {return getPersonaFromName(comboUserPersona.getSelectedItem().toString());}
     private JaggedList<String> getAgentPersona() {return getPersonaFromName(comboAgentPersona.getSelectedItem().toString());}
     private void interact(String str) {
+	interact(str,false);
+    }
+    private void interact(String str, boolean swap) {
 	new Thread(() -> {
 	    endisable(false);
+	    var up = swap ? getAgentPersona() : getUserPersona();
+	    var ap = swap ? getUserPersona() : getAgentPersona();
 	    var now = new Date();
-	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + getUserPersona().get(1).getValue() + " TO " + getAgentPersona().get(1).getValue()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
+	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + up.get(1).getValue() + " TO " + ap.get(1).getValue()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
 	    
-	    var mail = generateMIMEEmail(now, textSubject.getText(), getUserPersona().get(0).getValue(), getUserPersona().get(1).getValue(), getAgentPersona().get(0).getValue(), getAgentPersona().get(1).getValue(), str, lastEmail);
+	    var mail = generateMIMEEmail(now, textSubject.getText(), up.get(0).getValue(), up.get(1).getValue(), ap.get(0).getValue(), ap.get(1).getValue(), str, lastEmail);
 	    
 	    //printToOutput("=== " +textUserName.getText() +  " ===\n" + mail + "\n");
 	    try {
@@ -238,12 +253,12 @@ public class MyLilRAG {
 		e.printStackTrace();
 	    }
 	    Result<String> answer = MyLilRAGService.getAssistant(comboModel.getSelectedItem().toString(),
-		    getUserPersona().get(0).getValue(),
-		    getUserPersona().get(1).getValue(),
-		    getUserPersona().get(2).getValue(),
-		    getAgentPersona().get(0).getValue(),
-		    getAgentPersona().get(1).getValue(),
-		    getAgentPersona().get(2).getValue())
+		    up.get(0).getValue(),
+		    up.get(1).getValue(),
+		    up.get(2).getValue(),
+		    ap.get(0).getValue(),
+		    ap.get(1).getValue(),
+		    ap.get(2).getValue())
 		    .chat(mail);
 	    
 	    // Use Calendar to add a second
@@ -256,7 +271,6 @@ public class MyLilRAG {
 	    ans = ans.trim();
 	    if(ans.startsWith("```")) {
 		ans = ans.substring(ans.indexOf("\n")+1).trim();
-		
 	    }
 	    while(ans.endsWith("```")) {
 		ans = ans.substring(0,ans.length()-3).trim();
@@ -265,15 +279,15 @@ public class MyLilRAG {
 	    var boundary_index = ans.indexOf("Content-Type: multipart/mixed; boundary=\"");
 	    if(boundary_index > 0) {
 		var provided_boundary = ans.substring(boundary_index+41, ans.indexOf('"', boundary_index+42));
-		ans = ans.replaceAll(provided_boundary, getBoundary(getAgentPersona().get(1).getValue(),getUserPersona().get(1).getValue(),now));
+		ans = ans.replaceAll(provided_boundary, getBoundary(ap.get(1).getValue(),up.get(1).getValue(),now));
 	    }
 	    var provided_date = ans.split("\n")[1];
 	    if(provided_date.startsWith("Date: ")) {
 		ans  = ans.replace(provided_date, "Date: " + getTimeStampMail(now));
 	    }
 	    fn = "./archive/" + getTimeStamp(now) + 
-		    " FROM " + getAgentPersona().get(1).getValue() + 
-		    " TO " + getUserPersona().get(1).getValue() +
+		    " FROM " + ap.get(1).getValue() + 
+		    " TO " + up.get(1).getValue() +
 		    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "") + ".eml";
 	    try {
 		saveEmail(fn, ans);
@@ -327,7 +341,12 @@ public class MyLilRAG {
 	}
 	return o.toArray(new String[0]);
     }
-    
+    private void clearSubject() {
+	lastEmail = null;
+	textSubject.setText(lastEmail);
+	endisable(true);
+	textAreaOutput.setText("");
+    }
     private JComboBox<String> comboUserPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
     private JComboBox<String> comboAgentPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
     private JTextArea textAreaFiles;
@@ -365,7 +384,6 @@ public class MyLilRAG {
 	JLabel lblNewLabel = new JLabel("User message:");
 	
 	btnAIFollowUp = new JButton("Generate AI Follow-up");
-	btnAIFollowUp.setVisible(false);
 	btnAIFollowUp.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
 		    var prompt = "Generate a follow-up to this email exchange between two users. Here is the conversation: \n\n" +
@@ -401,10 +419,7 @@ public class MyLilRAG {
 	btnClear = new JButton("Clear");
 	btnClear.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
-		    lastEmail = null;
-		    textSubject.setText(lastEmail);
-		    endisable(true);
-		    textAreaOutput.setText("");
+		    clearSubject();
 		}
 	});
 	
