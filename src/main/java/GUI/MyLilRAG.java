@@ -29,6 +29,7 @@ import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.JTextField;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -236,6 +237,7 @@ public class MyLilRAG {
     private void interact(String str) {
 	interact(str,false);
     }
+    
     private void interact(String str, boolean swap) {
 	new Thread(() -> {
 	    endisable(false);
@@ -244,14 +246,23 @@ public class MyLilRAG {
 	    var now = new Date();
 	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + up.get(1).getValue() + " TO " + ap.get(1).getValue()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
 	    
-	    var mail = generateMIMEEmail(now, textSubject.getText(), up.get(0).getValue(), up.get(1).getValue(), ap.get(0).getValue(), ap.get(1).getValue(), str, lastEmail);
+	    var mail = (
+		    (str == null) ? lastEmail : 
+			generateMIMEEmail(now, 
+				textSubject.getText(), 
+				up.get(0).getValue(), up.get(1).getValue(), 
+				ap.get(0).getValue(), ap.get(1).getValue(), 
+				str, lastEmail));
 	    
 	    //printToOutput("=== " +textUserName.getText() +  " ===\n" + mail + "\n");
-	    try {
-		saveEmail(fn, mail);
-	    } catch (FileNotFoundException e) {
-		e.printStackTrace();
+	    if(str != null) {
+		try {
+		    saveEmail(fn, mail);
+		} catch (FileNotFoundException e) {
+		    e.printStackTrace();
+		}
 	    }
+	    
 	    Result<String> answer = MyLilRAGService.getAssistant(comboModel.getSelectedItem().toString(),
 		    up.get(0).getValue(),
 		    up.get(1).getValue(),
@@ -304,7 +315,8 @@ public class MyLilRAG {
 	    attachments.clear();
 	    textAreaFiles.setText("");
 	    textAreaInput.setText("");
-	    endisable(true);
+	    if(swap) {interact(null, false);}
+	    else { endisable(true);}
 	}).start();
     }
     private JButton btnGen;
@@ -386,10 +398,7 @@ public class MyLilRAG {
 	btnAIFollowUp = new JButton("Generate AI Follow-up");
 	btnAIFollowUp.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
-		    var prompt = "Generate a follow-up to this email exchange between two users. Here is the conversation: \n\n" +
-			    textAreaOutput.getText();
-		    
-		    interact(MyLilRAGService.oneShotChat(comboModel.getSelectedItem().toString(), prompt));
+		    interact(null, true); 
 		}
 	});
 	
