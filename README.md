@@ -1,6 +1,6 @@
 # MyLilRAG
 
-MyLilRAG is a simple Java application that utilizes retrieval-augmented generation (RAG) techniques to assist users by retrieving relevant information from both internal knowledge bases (embedding store) and real-time web search capabilities. It features a user-friendly graphical interface where users can input queries and receive responses based on a combination of stored knowledge and live web data.
+MyLilRAG is a Java application that utilizes retrieval-augmented generation (RAG) techniques to assist users by retrieving relevant information from both internal knowledge bases (embedding store). 
 
 ## Features
 
@@ -17,12 +17,19 @@ MyLilRAG is a simple Java application that utilizes retrieval-augmented generati
 
 Before running the application, ensure you have the following installed:
 
-- [Java JDK 17](https://www.oracle.com/java/technologies/javase-jdk17-downloads.html)
-- [Apache Maven](https://maven.apache.org/download.cgi)
-- local lmstudio server running nomic-embed-text for the embeddings.
+- [Java](https://www.java.com/)
+- local ollama running nomic-embed-text for the embeddings.
 - Neo4j database instance for the embedding store running in a Docker with NEO4J_AUTH set to none.
-- Tavily API key for web search capabilities  set as TAVILY_API_KEY in your environment variables
-- Groq API key for OpenAI model usage set as GROQ_API_KEY in your environment variables.
+
+```bash
+docker run \
+    --restart always \
+    --publish=7474:7474 --publish=7687:7687 \
+    --env NEO4J_AUTH=none \
+    --volume=/path/to/your/data:/data \
+    neo4j:5.26.1
+```
+- OpenAI and Groq API keys set as OPENAI_API_KEY GROQ_API_KEY environment variables.
 
 ### Clone the Repository
 
