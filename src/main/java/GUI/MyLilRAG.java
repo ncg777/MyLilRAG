@@ -29,7 +29,6 @@ import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.JTextField;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -226,7 +225,6 @@ public class MyLilRAG {
     }
     private void setLastMail(String mail) {
 	textSubject.setText("RE: "+ getSubject(mail));
-	textSubject.setEnabled(false);
 	btnClear.setEnabled(true);
 	this.lastEmail = mail;
 	this.textAreaOutput.setText(mail);
@@ -299,18 +297,19 @@ public class MyLilRAG {
 	    fn = "./archive/" + getTimeStamp(now) + 
 		    " FROM " + ap.get(1).getValue() + 
 		    " TO " + up.get(1).getValue() +
-		    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "") + ".eml";
+		    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "").trim() + ".eml";
+	    
+	    this.setLastMail(ans);
+	    
 	    try {
 		saveEmail(fn, ans);
 	    } catch (FileNotFoundException e) {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
 	    }
-	    
-	    this.setLastMail(ans);
-	    
+	    	    
 	    //printToOutput("=== " + textAgentName.getText()  + " ===\n" + ans + "\n");
-	    textAreaOutput.setText(ans);
+	    //textAreaOutput.setText(ans);
 	    textAreaOutput.setCaretPosition(0);
 	    attachments.clear();
 	    textAreaFiles.setText("");
