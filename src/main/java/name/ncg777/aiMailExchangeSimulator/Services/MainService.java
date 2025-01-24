@@ -1,4 +1,4 @@
-package Services;
+package name.ncg777.aiMailExchangeSimulator.Services;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +37,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 
-public class MyLilRAGService {
+public class MainService {
 
     
     public static interface MyLilRAGAssistant {

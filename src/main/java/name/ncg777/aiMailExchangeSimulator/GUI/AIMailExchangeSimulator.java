@@ -1,4 +1,4 @@
-package GUI;
+package name.ncg777.aiMailExchangeSimulator.GUI;
 import java.awt.EventQueue;
 
 import javax.swing.JFrame;
@@ -7,6 +7,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
 import dev.langchain4j.service.Result;
+import name.ncg777.aiMailExchangeSimulator.Services.MainService;
 import name.ncg777.computing.structures.JaggedList;
 
 import javax.swing.JButton;
@@ -23,8 +24,6 @@ import java.awt.event.ActionEvent;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
-
-import Services.MyLilRAGService;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.JTextField;
@@ -44,7 +43,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.google.common.base.Joiner;
 import java.awt.Dimension;
 
-public class MyLilRAG {
+public class AIMailExchangeSimulator {
 
     private JFrame frmMylilrag;
 
@@ -56,7 +55,7 @@ public class MyLilRAG {
 	    public void run() {
 		try {
 		    personas = JaggedList.parseJSONFile("./personas.json", (s) -> s);
-		    MyLilRAG window = new MyLilRAG();
+		    AIMailExchangeSimulator window = new AIMailExchangeSimulator();
 		    window.frmMylilrag.setVisible(true);
 		} catch (Exception e) {
 		    e.printStackTrace();
@@ -70,7 +69,7 @@ public class MyLilRAG {
      * @throws IOException 
      * @throws JsonParseException 
      */
-    public MyLilRAG() throws JsonParseException, IOException {
+    public AIMailExchangeSimulator() throws JsonParseException, IOException {
 	initialize();
     }
 
@@ -101,7 +100,7 @@ public class MyLilRAG {
 	pw.flush();
 	pw.close();
 	
-	MyLilRAGService.ingestSingleFile(fn);
+	MainService.ingestSingleFile(fn);
     }
     private static List<File> attachments = new ArrayList<File>();
     private static String getBoundary(String from, String to, Date date) {
@@ -262,7 +261,7 @@ public class MyLilRAG {
 		}
 	    }
 	    
-	    Result<String> answer = MyLilRAGService.getAssistant(comboModel.getSelectedItem().toString(),
+	    Result<String> answer = MainService.getAssistant(comboModel.getSelectedItem().toString(),
 		    up.get(0).getValue(),
 		    up.get(1).getValue(),
 		    up.get(2).getValue(),
@@ -331,7 +330,7 @@ public class MyLilRAG {
     private JButton btnClear;
     private static DefaultComboBoxModel<String> getComboModel() {
 	try {
-	    return new DefaultComboBoxModel<>(MyLilRAGService.getModels());
+	    return new DefaultComboBoxModel<>(MainService.getModels());
 	} catch (IOException | InterruptedException | URISyntaxException e) {
 	    return null;
 	}
@@ -367,28 +366,28 @@ public class MyLilRAG {
     final static String PREF_MODEL = "model";
 	
     private void restoreUserPrefs() {
-	Preferences prefs = Preferences.userNodeForPackage(MyLilRAG.class);
-	comboEndpoints.setSelectedItem(prefs.get(PREF_ENDPOINT, MyLilRAGService.getEndPoints()[0]));
+	Preferences prefs = Preferences.userNodeForPackage(AIMailExchangeSimulator.class);
+	comboEndpoints.setSelectedItem(prefs.get(PREF_ENDPOINT, MainService.getEndPoints()[0]));
 	try {
-	    comboModel.setSelectedItem(prefs.get(PREF_MODEL, MyLilRAGService.getModels()[0]));
+	    comboModel.setSelectedItem(prefs.get(PREF_MODEL, MainService.getModels()[0]));
 	} catch (IOException | InterruptedException | URISyntaxException e) {
 	    // TODO Auto-generated catch block
 	    e.printStackTrace();
 	}
     }
     private void saveEndpointPref() {
-	Preferences prefs = Preferences.userNodeForPackage(MyLilRAG.class);
+	Preferences prefs = Preferences.userNodeForPackage(AIMailExchangeSimulator.class);
 	prefs.put(PREF_ENDPOINT, comboEndpoints.getSelectedItem().toString());  
     }
     private void saveModelPref() {
-	Preferences prefs = Preferences.userNodeForPackage(MyLilRAG.class);
+	Preferences prefs = Preferences.userNodeForPackage(AIMailExchangeSimulator.class);
 	prefs.put(PREF_MODEL, comboModel.getSelectedItem().toString());
     }
     
     private void initialize() {
 	frmMylilrag = new JFrame();
 	frmMylilrag.getContentPane().setPreferredSize(new Dimension(550, 550));
-	frmMylilrag.setTitle("MyLilRAG");
+	frmMylilrag.setTitle("AIMailExchangeSimulator");
 	frmMylilrag.setBounds(100, 100, 682, 574);
 	frmMylilrag.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
@@ -440,10 +439,10 @@ public class MyLilRAG {
 	
 	lblNewLabel_8 = new JLabel("Endpoint:");
 	
-	comboEndpoints = new JComboBox<String>(MyLilRAGService.getEndPoints());
+	comboEndpoints = new JComboBox<String>(MainService.getEndPoints());
 	comboEndpoints.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
-		    MyLilRAGService.setBaseUrl(comboEndpoints.getSelectedItem().toString());
+		    MainService.setBaseUrl(comboEndpoints.getSelectedItem().toString());
 		    comboModel.setModel(getComboModel());
 		    saveEndpointPref();
 		}
@@ -637,11 +636,11 @@ public class MyLilRAG {
 	textAreaFiles.setEditable(false);
 	scrollPane_2.setViewportView(textAreaFiles);
 	frmMylilrag.getContentPane().setLayout(groupLayout);
-	MyLilRAGService.setPrintToOutput((s) -> printToOutput(s));
+	MainService.setPrintToOutput((s) -> printToOutput(s));
 	
 	new Thread(() -> {
 	    endisable(false);
-	    MyLilRAGService.ingest();
+	    MainService.ingest();
 	    endisable(true);
 
 	}).start();
