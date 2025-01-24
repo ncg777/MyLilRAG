@@ -83,7 +83,7 @@ public class MyLilRAGService {
 	else return "DUMMY";
     }
     public static String[] getEndPoints() {
-	String[] o = {"http://localhost:11434/v1","https://api.openai.com/v1", "https://api.groq.com/openai/v1"};
+	String[] o = {"https://api.openai.com/v1", "https://api.groq.com/openai/v1","http://localhost:11434/v1"};
 	return o;
     }
     private static String baseUrl = "http://localhost:11434/v1";
@@ -152,10 +152,9 @@ Content-Type 'multipart/mixed' with a sound boundary argument. A sound boundary 
 could be for example 'FROM<FROM>TO<TO>DATE<DATE>', where <FROM>, 
 <TO> and <DATE> are replaced by the from and to email addresses (with the '@' replaced by 'AT') and <DATE> is 
 the date of the reply, all with spaces, colons, commas and punctuation removed. 
-Your reply shall include the complete verbatim email that is currently being replied to as 
-the last part of the multipart message and it shall have content-type 'message/rfc822';
-its content shall be exactly the input received verbatim with the line "MIME-Version: 1.0" removed. 
-You shall not replace any part of the original email with ellipses (...) of any kind. 
+Your reply shall include a verbatim placeholder <PREVIOUSEMAIL> in the last part of 
+your multipart message which shall have content-type 'message/rfc822'. The <PREVIOUSEMAIL> placeholder will be replaced
+by the system with the complete verbatim email that is currently being replied to.
 The final MIME part boundary of your reply which should be suffixed with 2 hyphens (--) is always what 
 should be found on the last line of your answer and should match the boundary you have 
 used to delimitate the parts of your reply. Your 

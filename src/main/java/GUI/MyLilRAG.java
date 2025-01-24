@@ -34,6 +34,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
+import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
 import javax.swing.JComboBox;
@@ -275,6 +276,7 @@ public class MyLilRAG {
 	    calendar.setTime(now);
 	    calendar.add(Calendar.SECOND, 1); // Add 1 second
 	    var ans = answer.content();
+	    ans = ans.replace("<PREVIOUSEMAIL>", mail.replace("MIME-Version: 1.0", "").trim());
 	    // Get the updated date
 	    now = calendar.getTime();
 	    ans = ans.trim();
@@ -323,8 +325,8 @@ public class MyLilRAG {
     private JLabel lblNewLabel_5;
     private JLabel lblNewLabel_6;
     private JTextField textSubject;
-    private JComboBox<String> comboModel;
     private JLabel lblNewLabel_8;
+    private JComboBox<String> comboModel;
     private JComboBox<String> comboEndpoints;
     private JButton btnClear;
     private static DefaultComboBoxModel<String> getComboModel() {
@@ -361,6 +363,28 @@ public class MyLilRAG {
     private JComboBox<String> comboUserPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
     private JComboBox<String> comboAgentPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
     private JTextArea textAreaFiles;
+    final static String PREF_ENDPOINT = "endpoint";
+    final static String PREF_MODEL = "model";
+	
+    private void restoreUserPrefs() {
+	Preferences prefs = Preferences.userNodeForPackage(MyLilRAG.class);
+	comboEndpoints.setSelectedItem(prefs.get(PREF_ENDPOINT, MyLilRAGService.getEndPoints()[0]));
+	try {
+	    comboModel.setSelectedItem(prefs.get(PREF_MODEL, MyLilRAGService.getModels()[0]));
+	} catch (IOException | InterruptedException | URISyntaxException e) {
+	    // TODO Auto-generated catch block
+	    e.printStackTrace();
+	}
+    }
+    private void saveEndpointPref() {
+	Preferences prefs = Preferences.userNodeForPackage(MyLilRAG.class);
+	prefs.put(PREF_ENDPOINT, comboEndpoints.getSelectedItem().toString());  
+    }
+    private void saveModelPref() {
+	Preferences prefs = Preferences.userNodeForPackage(MyLilRAG.class);
+	prefs.put(PREF_MODEL, comboModel.getSelectedItem().toString());
+    }
+    
     private void initialize() {
 	frmMylilrag = new JFrame();
 	frmMylilrag.getContentPane().setPreferredSize(new Dimension(550, 550));
@@ -412,7 +436,7 @@ public class MyLilRAG {
 	textSubject = new JTextField();
 	
 	JLabel lblNewLabel_7 = new JLabel("Model:");
-	comboModel = new JComboBox<String>(getComboModel());
+	
 	
 	lblNewLabel_8 = new JLabel("Endpoint:");
 	
@@ -421,6 +445,14 @@ public class MyLilRAG {
 		public void actionPerformed(ActionEvent e) {
 		    MyLilRAGService.setBaseUrl(comboEndpoints.getSelectedItem().toString());
 		    comboModel.setModel(getComboModel());
+		    saveEndpointPref();
+		}
+	});
+	
+	comboModel = new JComboBox<String>(getComboModel());
+	comboModel.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    saveModelPref();
 		}
 	});
 	
@@ -491,6 +523,8 @@ public class MyLilRAG {
 		    }
 		}
 	});
+	
+	restoreUserPrefs();
 	
 	comboUserPersona.setSelectedIndex(0);
 	
