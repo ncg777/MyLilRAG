@@ -171,7 +171,7 @@ It is crucial that the 2 following points be respected or your answer will be di
 2. the last 2 characters of your message be the -- of the final MIME boundary,
 which is boundary defined previously, suffixed with 2 hyphens (--), as is specified by the MIME format.
 Do not replace the <4B57Y837YNC5Y857VT43TN> placeholder 
-with anything else or place a final mime boundary anywhere but at the end of your message; 
+with anything else or place a final mime boundary with -- anywhere else than on the last line of your answer; 
 just provide your answer and not the message you are replying to.
 So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
 the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
