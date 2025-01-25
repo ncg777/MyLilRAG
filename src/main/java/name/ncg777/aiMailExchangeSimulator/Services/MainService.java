@@ -105,8 +105,11 @@ public class MainService {
 	else return "DUMMY";
     }
     public static String[] getEndPoints() {
-	String[] o = {"https://api.openai.com/v1", "https://api.groq.com/openai/v1","http://localhost:11434/v1"};
-	return o;
+	List<String> o = new ArrayList<String>();
+	o.add("http://localhost:11434/v1");
+	if(System.getenv().containsKey("OPENAI_API_KEY")) o.add("https://api.openai.com/v1"); 
+	if(System.getenv().containsKey("GROQ_API_KEY")) o.add("https://api.groq.com/openai/v1");;
+	return o.toArray(new String[0]);
     }
     private static String baseUrl = "http://localhost:11434/v1";
     private static OpenAiChatModelBuilder getModelBuilder(String modelName) {

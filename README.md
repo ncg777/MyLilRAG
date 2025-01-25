@@ -1,21 +1,25 @@
 # AIMailExchangeSimulator
 
 AIMailExchangeSimulator is a Java application that lets the user simulate email
-exchanges between different fictitious personas defined in a json file.
+exchanges between different personas defined in a json file.
 
 The personas are defined by 3 strings in an array ["NAME", "EMAILADDRESS","BIO"].
 Those arrays are just stored in a json array in a json file named personas.json.
 
-You may select a persona to embody and a persona to exchange with that will be 
-handled by AI. You can simulate a round of exchange by clicking AI Followup;
-that will generate 2 mail interactions, leaving it back to your turn.
+You may select a persona to embody, the user persona, and a persona to exchange 
+with, the agent persona, handled by AI. You can also simulate a round of 
+exchanges by clicking AI Follow-up; this will generate 2 mail interactions, 
+leaving it back to your turn.
 
-Generated mail are saved in an archive folder and also saved in the neo4j vector
-database so that when AI writes the mail, it may consult the entire history of
-mail exchanges in the system.
+Generated mail are saved in EML MIME format in an archive folder and are also 
+saved in a local neo4j vector database so that when AI writes the mail, it may 
+retrieve the entire history of mail exchanges in the system by vectors.
 
-You may also ingest documents in the vector database by putting them in the
-toIngest folder; they will be ingested upon the startup of the program.
+You may also just ingest documents in the vector database by putting them in the
+toIngest folder; they will be ingested and archived upon the startup of the program.
+
+The Agent also has a tool to fetch any URL that will convert HTML files to 
+Markdown. Downloaded files will be saved in the archive folder.
 
 
 ## Features
@@ -30,12 +34,12 @@ toIngest folder; they will be ingested upon the startup of the program.
 
 ### Prerequisites
 
-Before running the application, ensure you have the following installed:
+Before running the application, ensure you have the following installed/setup:
 
 - [Java](https://www.java.com/)
-- OpenAI and Groq API keys set as OPENAI_API_KEY GROQ_API_KEY environment variables.
 - local ollama running nomic-embed-text for the embeddings.
 - Neo4j database instance for the embedding store running in a Docker with NEO4J_AUTH set to none.
+- Optionally OpenAI and/or Groq API keys set as OPENAI_API_KEY and GROQ_API_KEY environment variables.
 
 ```bash
 docker run \
