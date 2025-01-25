@@ -168,11 +168,8 @@ Your reply must also always include a verbatim placeholder <4B57Y837YNC5Y857VT43
 your multipart message. This last part of the email shall have content-type 'message/rfc822' and Content-Disposition: attachment with no name.
 It is crucial that the 2 following points be respected or your answer will be discarded by the system:
 1. the <4B57Y837YNC5Y857VT43TN> placeholder be present as demanded
-2. the last 2 characters of your message be the -- of the final MIME boundary,
+2. the very last 2 characters of your output will be the -- of the final MIME boundary,
 which is boundary defined previously, suffixed with 2 hyphens (--), as is specified by the MIME format.
-Do not replace the <4B57Y837YNC5Y857VT43TN> placeholder 
-with anything else or place a final mime boundary with -- anywhere else than on the last line of your answer; 
-just provide your answer and not the message you are replying to.
 So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
 the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
 replaced by the potential attachments if there are any.
