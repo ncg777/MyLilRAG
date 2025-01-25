@@ -12,6 +12,8 @@ import name.ncg777.computing.structures.JaggedList;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -44,7 +46,7 @@ import java.awt.Dimension;
 
 public class AIMailExchangeSimulator {
 
-    private JFrame frmMylilrag;
+    private JFrame frmAIMailExchangeSimulator;
 
     /**
      * Launch the application.
@@ -55,7 +57,7 @@ public class AIMailExchangeSimulator {
 		try {
 		    personas = JaggedList.parseJSONFile("./personas.json", (s) -> s);
 		    AIMailExchangeSimulator window = new AIMailExchangeSimulator();
-		    window.frmMylilrag.setVisible(true);
+		    window.frmAIMailExchangeSimulator.setVisible(true);
 		} catch (Exception e) {
 		    e.printStackTrace();
 		}
@@ -169,6 +171,11 @@ public class AIMailExchangeSimulator {
         mimeEmail.append("--" + boundary + "--");
         return mimeEmail.toString().trim();
     }
+    private String lastEmail() {
+	var o = this.textAreaOutput.getText();
+	if(o == null || o.isBlank()) return null;
+	return o;
+    }
     private void endisable(boolean v) {
 	btnAIFollowUp.setEnabled(v);
 	btnGen.setEnabled(v);
@@ -177,7 +184,7 @@ public class AIMailExchangeSimulator {
 	comboModel.setEnabled(v);
 	btnAttachFiles.setEnabled(v);
 	btnClearFiles.setEnabled(v);
-	btnClear.setEnabled(v && this.lastEmail != null);
+	btnClear.setEnabled(v && this.lastEmail() != null);
 	btnLoadEml.setEnabled(v);
 	textSubject.setEnabled(v);
 	comboUserPersona.addActionListener(new ActionListener() {
@@ -193,8 +200,7 @@ public class AIMailExchangeSimulator {
 	});
 	comboAgentPersona.setEnabled(v);
     }
-    private String lastEmail = null;
-    private static String getSubject(String mail) {
+    private static String getSubjectFromMail(String mail) {
 	var pat = Pattern.compile("Subject: (?<subject>.+)", 0);
 	var matcher = pat.matcher(mail);
 
@@ -204,61 +210,64 @@ public class AIMailExchangeSimulator {
 	}
 	return "";
     }
-    private String getSubjectFromMail(String mail) {
-	var subject_index = mail.indexOf("Subject: ");
-	var reply_subject = "RE " + textSubject.getText();
-	if(subject_index > 0) {
-	    reply_subject = mail.substring(subject_index+9, mail.indexOf("\n", subject_index+9));
-	}
-	return reply_subject;
-    }
+    
     private void setLastMail(String mail) {
-	textSubject.setText("RE: "+ getSubject(mail));
+	textSubject.setText("RE: "+ getSubjectFromMail(mail));
 	btnClear.setEnabled(true);
-	this.lastEmail = mail;
 	this.textAreaOutput.setText(mail);
+	textAreaOutput.setCaretPosition(0);
     }
     private static String nonFileCharsRegex = "[<>:;?!/]";
     private JaggedList<String> getUserPersona() {return getPersonaFromName(comboUserPersona.getSelectedItem().toString());}
     private JaggedList<String> getAgentPersona() {return getPersonaFromName(comboAgentPersona.getSelectedItem().toString());}
-    private void interact(String str) {
-	interact(str,false);
+    private void interact(String str, String subject, String lastEmail, JaggedList<String> userPersona, JaggedList<String> agentPersona) {
+	interact(str, subject, lastEmail, userPersona, agentPersona, false);
     }
     
-    private void interact(String str, boolean swap) {
+    private void interact(String str, String subject, String lastEmail, JaggedList<String> userPersona, JaggedList<String> agentPersona, boolean thenSwapped) {
 	new Thread(() -> {
 	    endisable(false);
-	    var up = swap ? getAgentPersona() : getUserPersona();
-	    var ap = swap ? getUserPersona() : getAgentPersona();
 	    var now = new Date();
-	    var fn = "./archive/" + MainService.getTimeStamp(now) + " FROM " + up.get(1).getValue() + " TO " + ap.get(1).getValue()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
 	    
 	    var mail = (
 		    (str == null) ? lastEmail : 
 			generateMIMEEmail(now, 
-				textSubject.getText(), 
-				up.get(0).getValue(), up.get(1).getValue(), 
-				ap.get(0).getValue(), ap.get(1).getValue(), 
+				subject, 
+				userPersona.get(0).getValue(), userPersona.get(1).getValue(), 
+				agentPersona.get(0).getValue(), agentPersona.get(1).getValue(), 
 				str, lastEmail));
 	    
-	    //printToOutput("=== " +textUserName.getText() +  " ===\n" + mail + "\n");
 	    if(str != null) {
 		try {
-		    saveEmail(fn, mail);
+		    
+		    saveEmail(
+			    "./archive/" + 
+		            MainService.getTimeStamp(now) + 
+		            " FROM " + userPersona.get(1).getValue() + 
+		            " TO " + agentPersona.get(1).getValue() +
+		            " SUBJECT " + subject.replaceAll(nonFileCharsRegex, "") + ".eml", 
+		            mail);
 		} catch (FileNotFoundException e) {
 		    e.printStackTrace();
 		}
 	    }
-	    
-	    Result<String> answer = MainService.getAssistant(comboModel.getSelectedItem().toString(),
-		    up.get(0).getValue(),
-		    up.get(1).getValue(),
-		    up.get(2).getValue(),
-		    ap.get(0).getValue(),
-		    ap.get(1).getValue(),
-		    ap.get(2).getValue())
-		    .chat(mail);
-	    
+	    Result<String> answer;
+	    try {
+		answer = MainService.getAssistant(comboModel.getSelectedItem().toString(),
+			userPersona.get(0).getValue(),
+			userPersona.get(1).getValue(),
+			userPersona.get(2).getValue(),
+			agentPersona.get(0).getValue(),
+			agentPersona.get(1).getValue(),
+			agentPersona.get(2).getValue())
+			.chat(mail);
+	    } catch(Exception e) {
+		JOptionPane.showMessageDialog(
+			frmAIMailExchangeSimulator, 
+			"There was an error fetching completions.",
+			"Error", JOptionPane.ERROR_MESSAGE, null);
+		return;
+	    }
 	    // Use Calendar to add a second
 	    Calendar calendar = Calendar.getInstance();
 	    calendar.setTime(now);
@@ -266,7 +275,7 @@ public class AIMailExchangeSimulator {
 	    var ans = answer.content();
 	    if(!ans.contains(MainService.placeholder)) {
 		System.out.println(ans);
-		throw new RuntimeException("The AI ain't cooperating.");
+ 		throw new RuntimeException("The AI ain't cooperating.");
 	    }
 	    ans = ans.replace(MainService.placeholder, mail);
 	    // Get the updated date
@@ -282,33 +291,32 @@ public class AIMailExchangeSimulator {
 	    var boundary_index = ans.indexOf("Content-Type: multipart/mixed; boundary=\"");
 	    if(boundary_index > 0) {
 		var provided_boundary = ans.substring(boundary_index+41, ans.indexOf('"', boundary_index+42));
-		ans = ans.replaceAll(provided_boundary, getBoundary(ap.get(1).getValue(),up.get(1).getValue(),now));
+		ans = ans.replaceAll(provided_boundary, getBoundary(agentPersona.get(1).getValue(),userPersona.get(1).getValue(),now));
 	    }
 	    var provided_date = ans.split("\n")[1];
 	    if(provided_date.startsWith("Date: ")) {
 		ans  = ans.replace(provided_date, "Date: " + getTimeStampMail(now));
 	    }
-	    fn = "./archive/" + MainService.getTimeStamp(now) + 
-		    " FROM " + ap.get(1).getValue() + 
-		    " TO " + up.get(1).getValue() +
-		    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "").trim() + ".eml";
 	    
 	    this.setLastMail(ans);
 	    
 	    try {
-		saveEmail(fn, ans);
+		saveEmail("./archive/" + MainService.getTimeStamp(now) + 
+			    " FROM " + agentPersona.get(1).getValue() + 
+			    " TO " + userPersona.get(1).getValue() +
+			    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "").trim() + ".eml", 
+			    ans);
 	    } catch (FileNotFoundException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	    }
 	    	    
 	    //printToOutput("=== " + textAgentName.getText()  + " ===\n" + ans + "\n");
 	    //textAreaOutput.setText(ans);
-	    textAreaOutput.setCaretPosition(0);
+	    
 	    attachments.clear();
 	    textAreaFiles.setText("");
 	    textAreaInput.setText("");
-	    if(swap) {interact(null, false);}
+	    if(thenSwapped) {interact(null, null, textAreaOutput.getText(), agentPersona,userPersona, false);}
 	    else { endisable(true);}
 	}).start();
     }
@@ -347,8 +355,8 @@ public class AIMailExchangeSimulator {
 	return o.toArray(new String[0]);
     }
     private void clearSubject() {
-	lastEmail = null;
-	textSubject.setText(lastEmail);
+	this.textAreaOutput.setText("");;
+	textSubject.setText(null);
 	endisable(true);
 	textAreaOutput.setText("");
     }
@@ -378,11 +386,11 @@ public class AIMailExchangeSimulator {
     }
     
     private void initialize() {
-	frmMylilrag = new JFrame();
-	frmMylilrag.getContentPane().setPreferredSize(new Dimension(550, 550));
-	frmMylilrag.setTitle("AIMailExchangeSimulator");
-	frmMylilrag.setBounds(100, 100, 682, 574);
-	frmMylilrag.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	frmAIMailExchangeSimulator = new JFrame();
+	frmAIMailExchangeSimulator.getContentPane().setPreferredSize(new Dimension(550, 550));
+	frmAIMailExchangeSimulator.setTitle("AIMailExchangeSimulator");
+	frmAIMailExchangeSimulator.setBounds(100, 100, 682, 574);
+	frmAIMailExchangeSimulator.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 	JScrollPane scrollPane = new JScrollPane();
 	
@@ -404,7 +412,14 @@ public class AIMailExchangeSimulator {
 	btnGen = new JButton("Send message");
 	btnGen.addActionListener(new ActionListener() {
 	    public void actionPerformed(ActionEvent e) {
-		if(!textAreaInput.getText().trim().isEmpty()) interact(textAreaInput.getText());
+		if(!textAreaInput.getText().trim().isEmpty()) {
+		    interact(
+			    textAreaInput.getText(), 
+			    textSubject.getText(),
+			    lastEmail(),
+			    getUserPersona(),
+			    getAgentPersona());
+		}
 	    }
 	});
 
@@ -413,7 +428,12 @@ public class AIMailExchangeSimulator {
 	btnAIFollowUp = new JButton("Generate AI Follow-up");
 	btnAIFollowUp.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
-		    interact(null, true); 
+		    interact(
+			    null, 
+			    null,
+			    lastEmail(),
+			    getAgentPersona(),
+			    getUserPersona());
 		}
 	});
 	
@@ -461,7 +481,7 @@ public class AIMailExchangeSimulator {
 		    JFileChooser fileChooser = new JFileChooser();
 		    fileChooser.setMultiSelectionEnabled(true);
 
-		    int returnValue = fileChooser.showOpenDialog(frmMylilrag);
+		    int returnValue = fileChooser.showOpenDialog(frmAIMailExchangeSimulator);
 		    if (returnValue == JFileChooser.APPROVE_OPTION) {
 			File[] selectedFiles = fileChooser.getSelectedFiles();
 			List<File> fileList = new ArrayList<>();
@@ -501,7 +521,7 @@ public class AIMailExchangeSimulator {
 		        }
 		    });
 
-		    int returnValue = fileChooser.showOpenDialog(frmMylilrag);
+		    int returnValue = fileChooser.showOpenDialog(frmAIMailExchangeSimulator);
 		    if (returnValue == JFileChooser.APPROVE_OPTION) {
 			File selectedFile = fileChooser.getSelectedFile();
 			try {
@@ -524,7 +544,7 @@ public class AIMailExchangeSimulator {
 	
 	JScrollPane scrollPane_2 = new JScrollPane();
 	
-	GroupLayout groupLayout = new GroupLayout(frmMylilrag.getContentPane());
+	GroupLayout groupLayout = new GroupLayout(frmAIMailExchangeSimulator.getContentPane());
 	groupLayout.setHorizontalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
 			.addGroup(groupLayout.createSequentialGroup()
@@ -628,12 +648,13 @@ public class AIMailExchangeSimulator {
 	textAreaFiles = new JTextArea();
 	textAreaFiles.setEditable(false);
 	scrollPane_2.setViewportView(textAreaFiles);
-	frmMylilrag.getContentPane().setLayout(groupLayout);
+	frmAIMailExchangeSimulator.getContentPane().setLayout(groupLayout);
 	MainService.setPrintToOutput((s) -> printToOutput(s));
 	
 	new Thread(() -> {
 	    endisable(false);
 	    MainService.ingest();
+	    textAreaOutput.setText("");
 	    endisable(true);
 
 	}).start();

@@ -18,10 +18,19 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.function.Consumer;
+
+import org.jsoup.parser.Parser;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
 import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
@@ -43,15 +52,17 @@ import dev.langchain4j.service.V;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
+import io.github.furstenheim.CopyDown;
 import name.ncg777.maths.Combination;
 import name.ncg777.maths.enumerations.MixedRadixEnumeration;
 import name.ncg777.maths.music.pcs12.Pcs12;
 import name.ncg777.maths.sequences.Sequence;
 
+
 public class MainService {
 
     
-    public static interface MyLilRAGAssistant {
+    public static interface RAGAssistant {
 	@UserMessage("{{message}}")
 	Result<String> chat(@V("message") String message);
     }
@@ -135,9 +146,9 @@ public class MainService {
 	return getModelBuilder(model).build().generate(str); 
     }
     public static String placeholder = "<4B57Y837YNC5Y857VT43TN>";
-    public static MyLilRAGAssistant getAssistant(String model, String sender, String senderEmail, String senderBio, String other, String otherEmail, String otherBio) {
+    public static RAGAssistant getAssistant(String model, String sender, String senderEmail, String senderBio, String other, String otherEmail, String otherBio) {
 
-	return AiServices.builder(MyLilRAGAssistant.class).systemMessageProvider(
+	return AiServices.builder(RAGAssistant.class).systemMessageProvider(
 		(o) -> "" +
 """
 You are an AI agent designed to analyze email exchanges in MIME format and provide 
@@ -241,53 +252,56 @@ provide context if necessary.
 	 return o;
 	 
     }
+    
     static class Tools {
-
-        @Tool("Retrieve an http or https link from an url.")
-        String retrieveUrl(String url) {
-            HttpClient client = HttpClient.newHttpClient();
-
-            HttpRequest request;
-	    try {
-		request = HttpRequest.newBuilder()
-		        .uri(new URI(url))
-		        .GET()
-		        .build();
-	    } catch (URISyntaxException e) {
-		return null;
-	    }
-            HttpResponse<String> response;
-	    try {
-		response = client.send(request, HttpResponse.BodyHandlers.ofString());
-	    } catch (IOException|InterruptedException e) {
-		return null;
-	    }
-            if(response.statusCode() == 200) {
-        	var fn = "./archive/fetched_url_" + getTimeStamp(new Date()) + "_" + url.replaceAll(":","").replaceAll("/", "_");
-        	PrintWriter pw;
-		try {
-		    pw = new PrintWriter(fn);
-		    pw.print(response.body());
-	            pw.flush();
-	            pw.close();
-	            ingestSingleFile(fn);
-		} catch (FileNotFoundException e) {
-		    ;
+        @Tool("Fetches a markdown version of an HTML web page or any plain text web resource as is from a url.")
+        public static String fetchUrl(@P("The url to fetch") String url) {
+            WebDriver driver = new ChromeDriver();
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            driver.get(url);
+            wait.until(
+        	    (ExpectedCondition<Boolean>) wd ->  
+        	    	((JavascriptExecutor)wd)
+        	    		.executeScript("return document.readyState")
+        	    			.equals("complete"));
+            var src = driver.getPageSource();
+            driver.close();
+            boolean isMd = false;
+            try {
+		var doc = Parser.htmlParser().parseInput(src,(new URI(url)).getHost());
+		for(var e : doc.select("a[href]")) {
+		    e.attr("href", e.absUrl("href"));
+		    e.text(e.text().trim());
 		}
-        	
-                return response.body();
+		var converter = new CopyDown();
+		src = converter.convert(doc.toString());
+		isMd = true;
+	    } catch (URISyntaxException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	    }
+            var fn = "./archive/fetched_url_" + getTimeStamp(new Date()) + "_" + url.replaceAll(":","").replaceAll("[/%&?]", "_") + (isMd ? ".md" : "");
+            PrintWriter pw;
+            try {
+        	pw = new PrintWriter(fn);
+        	pw.print(src);
+        	pw.flush();
+        	pw.close();
+        	ingestSingleFile(fn);
+            } catch (FileNotFoundException e) {
+        	;
             }
-            else {return null;}
+            return src;
         }
 
         @Tool("Get pitches in pitch class set identified by Forte number.")
-        String getForteNumberPitches(String forteNumber) {
+        public static String getForteNumberPitches(String forteNumber) {
             var f = Pcs12.parseForte(forteNumber);
             if(f==null)return null;
             return f.asSequence().toString();
         }
-        @Tool("Get Forte number from pitch set provided as an integer sequence s of k numbers s_i with k <= 12 and 0 <= s_i <= 11.")
-        String getForteNumberFromPitchSequence(String pitches) {
+        @Tool("Get Forte number from pitch set.")
+        public static String getForteNumberFromPitchSequence(@P("A string representing a set of pitches as an integer sequence s of k numbers s_i with k <= 12 and 0 <= s_i <= 11.") String pitches) {
             var s = Sequence.parse(pitches);
             if(s==null)return null;
             Set<Integer> set = new TreeSet<Integer>();
@@ -295,15 +309,15 @@ provide context if necessary.
             return Pcs12.identify(new Combination(12,set)).toForteNumberString();
         }
         @Tool("Get interval vector associated with Forte number.")
-        String getForteNumberIntervalVector(String forteNumber) {
+        public static String getForteNumberIntervalVector(@P("The forte number, with or without the transposition part, that is 'N-O' or 'N-O.T' where N is an integer for the number of notes, O is the order of the pitch class set and T is the optional zero-padded transposition integer where 00 <= T < 12, for example 7-35 or 7-35.11.") String forteNumber) {
             if(!forteNumber.contains(".")) forteNumber = forteNumber + ".00";
             var f = Pcs12.parseForte(forteNumber);
             if(f==null)return null;
             return f.getIntervalVector().toString();
         }
         
-        @Tool("Enumerate a mixed base of dimension k, that is the n k-tuples of elements from each set base_i, the integers taken as sets, with 0 <= i < k, and with n being the product of the k base_i integers. The only parameter is the integer base as a string of space separated positive non-zero integers.")
-        String enumerateMixedBase(String base) {
+        @Tool("Enumerate a mixed base of dimension k, that is the n k-tuples of elements from each set base_i, with the integers considered as sets, and n being the product of the k base_i integers.")
+        public static String enumerateMixedBase(@P("The integer base as a string of k space separated positive non-zero integers base_i with 0 <= i < k.") String base) {
             var b = Sequence.parse(base);
             var mre = new MixedRadixEnumeration(b);
             StringBuilder sb = new StringBuilder();

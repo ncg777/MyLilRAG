@@ -5,7 +5,7 @@
 
 	<groupId>name.ncg777</groupId>
 	<artifactId>AIMailExchangeSimulator</artifactId>
-	<version>2025.1.25</version>
+	<version>2025.1.26</version>
 	<packaging>jar</packaging>
 
 	<name>AIMailExchangeSimulator</name>
@@ -103,5 +103,25 @@
 			<artifactId>jackson-databind</artifactId>
 			<version>2.14.0</version>
 		</dependency>
+		<dependency>
+		    <groupId>org.seleniumhq.selenium</groupId>
+		    <artifactId>selenium-chrome-driver</artifactId>
+		    <version>4.28.1</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.seleniumhq.selenium</groupId>
+		    <artifactId>selenium-java</artifactId>
+		    <version>4.28.1</version>
+		</dependency>
+		<dependency>
+		    <groupId>org.jsoup</groupId>
+		    <artifactId>jsoup</artifactId>
+		    <version>1.18.3</version>
+		</dependency>
+	    <dependency>
+	        <groupId>io.github.furstenheim</groupId>
+	        <artifactId>copy_down</artifactId>
+	        <version>1.1</version>
+	    </dependency>
 	</dependencies>
 </project>
