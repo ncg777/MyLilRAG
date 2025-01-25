@@ -79,7 +79,7 @@ public class MainService {
 	return EmbeddingStoreContentRetriever.builder().embeddingModel(getEmbeddingModel())
 		.embeddingStore(getEmbeddingStore()).build();
     }
-
+    private static EmbeddingStoreIngestor ingestor = getIngestor();
     public static EmbeddingStoreIngestor getIngestor() {
 	var ingestor = EmbeddingStoreIngestor.builder().embeddingModel(getEmbeddingModel())
 		.embeddingStore(getEmbeddingStore()).build();
@@ -243,8 +243,8 @@ provide context if necessary.
     }
     static class Tools {
 
-        @Tool("Fetch an http or https url link.")
-        String fetchUrl(String url) {
+        @Tool("Retrieve an http or https link from an url.")
+        String retrieveUrl(String url) {
             HttpClient client = HttpClient.newHttpClient();
 
             HttpRequest request;
@@ -286,7 +286,7 @@ provide context if necessary.
             if(f==null)return null;
             return f.asSequence().toString();
         }
-        @Tool("Get Forte number from pitches integer sequence s of k numbers s_i with k < 12 and 0 <= s_i <= 11.")
+        @Tool("Get Forte number from pitch set provided as an integer sequence s of k numbers s_i with k <= 12 and 0 <= s_i <= 11.")
         String getForteNumberFromPitchSequence(String pitches) {
             var s = Sequence.parse(pitches);
             if(s==null)return null;
@@ -296,6 +296,7 @@ provide context if necessary.
         }
         @Tool("Get interval vector associated with Forte number.")
         String getForteNumberIntervalVector(String forteNumber) {
+            if(!forteNumber.contains(".")) forteNumber = forteNumber + ".00";
             var f = Pcs12.parseForte(forteNumber);
             if(f==null)return null;
             return f.getIntervalVector().toString();
@@ -324,14 +325,14 @@ provide context if necessary.
     }
 
     public static boolean ingestString(String str) {
-	getIngestor().ingest(Document.from(str));
+	ingestor.ingest(Document.from(str));
 	return true;
     }
     public static void ingestSingleFile(String path) {
 	Document doc = FileSystemDocumentLoader.loadDocument(path, parser);
 	List<TextSegment> segments = splitter.split(doc);
 	for (TextSegment s : segments) {
-	    getIngestor().ingest(Document.from(s.text(), s.metadata()));
+	    ingestor.ingest(Document.from(s.text(), s.metadata()));
 	}
     }
     public static boolean ingest(File f) {
