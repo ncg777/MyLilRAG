@@ -150,9 +150,10 @@ The answer you will provide will be a partial email template that won't include 
 that is being replied to. This template will be turned into a valid MIME file after you answer using your answer.
 I repeat that you should absolutely NOT include the mail you are replying to in your MIME mail template answer. 
 Your MIME mail template answer shall have Content-Type 'multipart/mixed' with 
-a sound boundary argument. A sound boundary argument
-could be for example 'boundary_X', where X are replaced by  
-date of the reply including seconds, all with spaces, colons, commas and punctuation removed. 
+a boundary argument. The boundary shall be 'boundary_X', where X is replaced by  
+date of the reply including seconds, all with spaces, colons, commas and punctuation removed.
+Use the very exact same boundary consistently all over your mail, regardless of the 
+final -- of the output which will be explained below.
 Your answer may also contain other parts in the form of file attachments and you 
 shall provide, for each attached file, the Content-Type line, the 
 file's name on the MIME Content-Disposition line as it should be done, and 
@@ -167,7 +168,7 @@ and then the content. You must not insert useless extra empty lines; there shoul
 Your reply must also always include a verbatim placeholder <4B57Y837YNC5Y857VT43TN> (with the < and >) as the only content of the last part of 
 your multipart message. This last part of the email shall have content-type 'message/rfc822' and Content-Disposition: attachment with no name.
 It is crucial that the the <4B57Y837YNC5Y857VT43TN> placeholder be present as demanded and
-that your output ends with --.
+that the last 2 characters of your output be -- on the same line as the final boundary.
 
 So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
 the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
