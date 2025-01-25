@@ -151,7 +151,7 @@ that is being replied to. This template will be turned into a valid MIME file af
 I repeat that you should absolutely NOT include the mail you are replying to in your MIME mail template answer. 
 Your MIME mail template answer shall have Content-Type 'multipart/mixed' with 
 a sound boundary argument. A sound boundary argument
-could be for example 'boundary_<DATE>', where <DATE> are replaced by  
+could be for example 'boundary_X', where X are replaced by  
 date of the reply including seconds, all with spaces, colons, commas and punctuation removed. 
 Your answer may also contain other parts in the form of file attachments and you 
 shall provide, for each attached file, the Content-Type line, the 
@@ -166,57 +166,51 @@ line, followed by the Content-Type line, then the Content-Transfer-Encoding line
 and then the content. You must not insert useless extra empty lines; there should be a single empty line between the headers and the content. 
 Your reply must also always include a verbatim placeholder <4B57Y837YNC5Y857VT43TN> (with the < and >) as the only content of the last part of 
 your multipart message. This last part of the email shall have content-type 'message/rfc822' and Content-Disposition: attachment with no name.
-It is crucial that the 2 following points about the last 2 lines of your output be 
-respected or your output will be rejected by the system:
-1. the <4B57Y837YNC5Y857VT43TN> placeholder be present as demanded
-2. the very last 2 characters of the last line of your output will be the -- of the final MIME boundary, 
-which is the only thing on the last line of your final output,
-and is defined as the boundary defined previously suffixed with 2 hyphens (--), as is specified by the MIME format.
+It is crucial that the the <4B57Y837YNC5Y857VT43TN> placeholder be present as demanded and
+that your output ends with --.
+
 So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
 the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
 replaced by the potential attachments if there are any.
 
-===BEGIN ANSWER TEMPLATE===
+===BEGIN OUTPUT TEMPLATE===
 MIME-Version: 1.0  
 Date: ...
 From: ... 
 To: ...  
 Subject: ...  
-Content-Type: multipart/mixed; boundary="boundary_..."  
+Content-Type: multipart/mixed; boundary="boundary_X"  
 
---boundary_... 
+--boundary_X
 Content-Type: text/plain; charset=UTF-8  
 Content-Transfer-Encoding: 7bit  
 
 <CONTENT OF YOUR ANSWER>
 
---boundary_...  
-
+--boundary_X  
 Content-Type: ...
 Content-Disposition: attachment; filename="..."
 
 <POTENTIAL ATTACHMENT 1>
 
---boundary_...  
-
+--boundary_X  
 Content-Type: ...
 Content-Disposition: attachment; filename="..."
 
 <POTENTIAL ATTACHMENT 2>
---boundary_...  
-
+--boundary_X  
 Content-Type: ...
 Content-Disposition: attachment; filename="..."
 
 <POTENTIAL ATTACHMENT ...>
 
---boundary_...  
+--boundary_X  
 Content-Type: message/rfc822  
 Content-Disposition: attachment  
 
 <4B57Y837YNC5Y857VT43TN>
---boundary_...--
-===END ANSWER TEMPLATE===
+--boundary_X--
+===END OUTPUT TEMPLATE===
 
 Needless to say, don't include the attachment parts if there are no attachment.
 
