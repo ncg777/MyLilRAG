@@ -44,6 +44,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 import name.ncg777.maths.Combination;
+import name.ncg777.maths.enumerations.MixedRadixEnumeration;
 import name.ncg777.maths.music.pcs12.Pcs12;
 import name.ncg777.maths.sequences.Sequence;
 
@@ -193,7 +194,6 @@ Content-Type: ...
 Content-Disposition: attachment; filename="..."
 
 <POTENTIAL ATTACHMENT 1>
-
 --boundary_X  
 Content-Type: ...
 Content-Disposition: attachment; filename="..."
@@ -204,7 +204,6 @@ Content-Type: ...
 Content-Disposition: attachment; filename="..."
 
 <POTENTIAL ATTACHMENT ...>
-
 --boundary_X  
 Content-Type: message/rfc822  
 Content-Disposition: attachment  
@@ -300,6 +299,15 @@ provide context if necessary.
             var f = Pcs12.parseForte(forteNumber);
             if(f==null)return null;
             return f.getIntervalVector().toString();
+        }
+        
+        @Tool("Enumerate a mixed base of dimension k, that is the n k-tuples of elements from each set base_i, the integers taken as sets, with 0 <= i < k, and with n being the product of the k base_i integers. The only parameter is the integer base as a string of space separated positive non-zero integers.")
+        String enumerateMixedBase(String base) {
+            var b = Sequence.parse(base);
+            var mre = new MixedRadixEnumeration(b);
+            StringBuilder sb = new StringBuilder();
+            while(mre.hasMoreElements()) sb.append((new Sequence(mre.nextElement())).toString()+"\n");
+            return sb.toString();
         }
     }
     private static File toIngest = new File("./toIngest");
