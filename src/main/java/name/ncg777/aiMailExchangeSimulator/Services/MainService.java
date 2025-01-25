@@ -153,10 +153,7 @@ Your MIME mail template answer shall have Content-Type 'multipart/mixed' with
 a sound boundary argument. A sound boundary argument
 could be for example 'boundary_<DATE>', where <DATE> are replaced by  
 date of the reply including seconds, all with spaces, colons, commas and punctuation removed. 
-The final MIME part boundary of your reply which should be suffixed with 2 hyphens (--) is always what 
-should be found on the last line of your answer and should match the boundary you have 
-used to delimitate the parts of your reply. Your 
-answer may also contain other parts in the form of file attachments and you 
+Your answer may also contain other parts in the form of file attachments and you 
 shall provide, for each attached file, the Content-Type line, the 
 file's name on the MIME Content-Disposition line as it should be done, and 
 finally the content of the file in plain text of course. Don't try to encode 
@@ -169,9 +166,13 @@ line, followed by the Content-Type line, then the Content-Transfer-Encoding line
 and then the content. You must not insert useless extra empty lines; there should be a single empty line between the headers and the content. 
 Your reply must also always include a verbatim placeholder <4B57Y837YNC5Y857VT43TN> (with the < and >) as the only content of the last part of 
 your multipart message. This last part of the email shall have content-type 'message/rfc822' and Content-Disposition: attachment with no name.
-It is crucial that the <4B57Y837YNC5Y857VT43TN> placeholder be present and that your message ends the final MIME boundary 
-or your answer will be discarded by the system. Do not replace the <4B57Y837YNC5Y857VT43TN> placeholder 
-with anything else; just provide your answer and not the message you are replying to.
+It is crucial that the 2 following points be respected or your answer will be discarded by the system:
+1. the <4B57Y837YNC5Y857VT43TN> placeholder be present as demanded
+2. the last 2 characters of your message be the -- of the final MIME boundary,
+which is boundary defined previously, suffixed with 2 hyphens (--), as is specified by the MIME format.
+Do not replace the <4B57Y837YNC5Y857VT43TN> placeholder 
+with anything else or place a final mime boundary anywhere but at the end of your message; 
+just provide your answer and not the message you are replying to.
 So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
 the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
 replaced by the potential attachments if there are any.
