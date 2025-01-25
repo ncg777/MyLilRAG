@@ -22,6 +22,8 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -172,6 +174,7 @@ public class AIMailExchangeSimulator {
     public static void main(String[] args) {
 	EventQueue.invokeLater(new Runnable() {
 	    public void run() {
+		if(tableMails != null) return;
 		try {
 		    personas = Matrix.parseJSONFile("./personas.json", (s) -> s);
 		    AIMailExchangeSimulator window = new AIMailExchangeSimulator();
@@ -214,7 +217,7 @@ public class AIMailExchangeSimulator {
 	    String subject,
             String mail) throws FileNotFoundException {
 	String[] newRow = {getTimeStampTable(date),from,to,subject};
-	getMailsTableModel().addRow(newRow);
+	((DefaultTableModel)tableMails.getModel()).addRow(newRow);
 	var r = new ArrayList<String>();
 	r.add(getTimeStampTable(date));
 	r.add(from);
@@ -341,7 +344,6 @@ public class AIMailExchangeSimulator {
 	    btnClear.setEnabled(true);
 	    this.textAreaOutput.setText(mail);
 	    textAreaOutput.setCaretPosition(0);
-	    
 	}
     }
     //private static String nonFileCharsRegex = "[<>:;?!/]";
@@ -538,14 +540,20 @@ public class AIMailExchangeSimulator {
     private static String[] mailsColumns = new String[] {
 		"date", "from", "to", "subject"
 	};
-    private static DefaultTableModel mailsTableModel = getMailsTableModel();
     private static DefaultTableModel getMailsTableModel() {
-	if(mailsTableModel == null) mailsTableModel = new DefaultTableModel(
+	return new DefaultTableModel(
 		mails.rowCount() == 0 ? new String[0][4] : (String[][])mails.toJaggedList(s -> s).toArray(),
-		mailsColumns);
-	return mailsTableModel;
+		mailsColumns) {
+		    private static final long serialVersionUID = 1L;
+
+		    @Override
+		    public boolean isCellEditable(int row, int column) {
+			return false;
+		    }
+	    
+	};
     }
-    
+  
     private void initialize() {
 	frmAIMailExchangeSimulator = new JFrame();
 	frmAIMailExchangeSimulator.getContentPane().setPreferredSize(new Dimension(550, 550));
@@ -758,7 +766,39 @@ public class AIMailExchangeSimulator {
 	splitPane.setLeftComponent(scrollPane_3);
 	
 	tableMails = new JTable();
-	
+	tableMails.addKeyListener(new KeyListener() {
+	    
+	    @Override
+	    public void keyTyped(KeyEvent e) {
+		// TODO Auto-generated method stub
+		
+	    }
+	    
+	    @Override
+	    public void keyReleased(KeyEvent e) {
+		// TODO Auto-generated method stub
+		
+	    }
+	    
+	    @Override
+	    public void keyPressed(KeyEvent e) {
+		if(e.isConsumed()) return;
+		if(e.getKeyCode() == KeyEvent.VK_DELETE || e.getKeyCode() == KeyEvent.VK_BACK_SPACE) {
+		    var r = getSelectedRow();
+		    tableMails.getSelectionModel().clearSelection();
+		    int im = findSelectedMailIndexInModel(r);
+		    
+		    if(im >= 0) ((DefaultTableModel)tableMails.getModel()).removeRow(im);
+		    im = findSelectedMailIndexInMatrix(r);
+		    if(im >= 0) mails.removeRow(im);
+		    try {
+			writeMails();
+		    } catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+		    }
+		}
+	    }
+	});
 	tableMails.setModel(getMailsTableModel());
 	var sorter = new TableRowSorter<TableModel>(tableMails.getModel());
 	sorter.setSortable(0, true);
@@ -771,29 +811,18 @@ public class AIMailExchangeSimulator {
 	
 	tableMails.setRowSorter(sorter);
 	tableMails.getSelectionModel().setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+	
 	tableMails.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
 	    
 	    @Override
 	    public void valueChanged(ListSelectionEvent e) {
 		if(e.getValueIsAdjusting()) return;
-		if(tableMails.getSelectionModel().getSelectedIndices().length == 0) {
+		if(tableMails.getSelectedRow() < 0) {
 		    setSelectedMail(null);
 		    return;
 		}
-		setSelectedMail(mails.getRow(tableMails.getSelectionModel().getSelectedIndices()[0]).get(4));
-		/*
-		var v = mails.getRow(tableMails.getSelectionModel().getSelectedIndices()[0]);
-		for(int i=0;i<mails.rowCount();i++) {
-		    if(
-			    mails.get(i, 0).equals(v.get(0)) &&
-			    mails.get(i, 1).equals(v.get(1)) &&
-			    mails.get(i, 2).equals(v.get(2)) &&
-			    mails.get(i, 3).equals(v.get(3))) {
-			setSelectedMail(mails.get(i, 4));
-			break;
-		    }
-		}
-		*/
+		var sr = getSelectedRow();
+		setSelectedMail(mails.getRow(findSelectedMailIndexInMatrix(sr)).get(4));
 	    }
 	});
 	
@@ -829,7 +858,37 @@ public class AIMailExchangeSimulator {
 	}).start();
 
     }
-
+    private List<String> getSelectedRow() {
+	var o = new ArrayList<String>();
+	for(int i=0;i<4;i++) {
+	    o.add((String)tableMails.getValueAt(tableMails.getSelectedRow(), i));
+	}
+	return o;
+    }
+    private int findSelectedMailIndexInMatrix(List<String> v) {
+	for(int i=0;i<mails.rowCount();i++) {
+	    if(
+		    mails.get(i, 0).equals(v.get(0)) &&
+		    mails.get(i, 1).equals(v.get(1)) &&
+		    mails.get(i, 2).equals(v.get(2)) &&
+		    mails.get(i, 3).equals(v.get(3))) {
+		return i;
+	    }
+	}
+	return -1;
+    }
+    private int findSelectedMailIndexInModel(List<String> v) {
+	for(int i=0;i<tableMails.getModel().getRowCount();i++) {
+	    if(
+		    tableMails.getModel().getValueAt(i, 0).equals(v.get(0)) &&
+		    tableMails.getModel().getValueAt(i, 1).equals(v.get(1)) &&
+		    tableMails.getModel().getValueAt(i, 2).equals(v.get(2)) &&
+		    tableMails.getModel().getValueAt(i, 3).equals(v.get(3))) {
+		return i;
+	    }
+	}
+	return -1;
+    }
     /*
     private static Object buildToolFromClass(Class<?> cl) {
 	UnitSourceGenerator unitSG = UnitSourceGenerator.create("Tools");
