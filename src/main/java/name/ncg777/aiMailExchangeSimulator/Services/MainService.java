@@ -166,10 +166,12 @@ line, followed by the Content-Type line, then the Content-Transfer-Encoding line
 and then the content. You must not insert useless extra empty lines; there should be a single empty line between the headers and the content. 
 Your reply must also always include a verbatim placeholder <4B57Y837YNC5Y857VT43TN> (with the < and >) as the only content of the last part of 
 your multipart message. This last part of the email shall have content-type 'message/rfc822' and Content-Disposition: attachment with no name.
-It is crucial that the 2 following points be respected or your answer will be discarded by the system:
+It is crucial that the 2 following points about the last 2 lines of your output be 
+respected or your output will be rejected by the system:
 1. the <4B57Y837YNC5Y857VT43TN> placeholder be present as demanded
-2. the very last 2 characters of your output will be the -- of the final MIME boundary,
-which is boundary defined previously, suffixed with 2 hyphens (--), as is specified by the MIME format.
+2. the very last 2 characters of the last line of your output will be the -- of the final MIME boundary, 
+which is the only thing on the last line of your final output,
+and is defined as the boundary defined previously suffixed with 2 hyphens (--), as is specified by the MIME format.
 So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
 the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
 replaced by the potential attachments if there are any.
