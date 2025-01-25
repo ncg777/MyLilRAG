@@ -239,7 +239,6 @@ public class AIMailExchangeSimulator {
 	    
 	    if(str != null) {
 		try {
-		    
 		    saveEmail(
 			    "./archive/" + 
 		            MainService.getTimeStamp(now) + 
@@ -274,7 +273,6 @@ public class AIMailExchangeSimulator {
 	    calendar.add(Calendar.SECOND, 1); // Add 1 second
 	    var ans = answer.content();
 	    if(!ans.contains(MainService.placeholder)) {
-		System.out.println(ans);
  		throw new RuntimeException("The AI ain't cooperating.");
 	    }
 	    ans = ans.replace(MainService.placeholder, mail);
@@ -366,7 +364,7 @@ public class AIMailExchangeSimulator {
     final static String PREF_ENDPOINT = "endpoint";
     final static String PREF_MODEL = "model";
 	
-    private void restoreUserPrefs() {
+    private void loadUserPrefs() {
 	Preferences prefs = Preferences.userNodeForPackage(AIMailExchangeSimulator.class);
 	comboEndpoints.setSelectedItem(prefs.get(PREF_ENDPOINT, MainService.getEndPoints()[0]));
 	try {
@@ -536,7 +534,7 @@ public class AIMailExchangeSimulator {
 		}
 	});
 	
-	restoreUserPrefs();
+	loadUserPrefs();
 	
 	comboUserPersona.setSelectedIndex(0);
 	
