@@ -433,7 +433,7 @@ public class AIMailExchangeSimulator {
 			    null,
 			    lastEmail(),
 			    getAgentPersona(),
-			    getUserPersona());
+			    getUserPersona(), true);
 		}
 	});
 	
