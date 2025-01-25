@@ -6,9 +6,16 @@ import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.service.Result;
+import io.github.furstenheim.CopyDown;
 import name.ncg777.aiMailExchangeSimulator.Services.MainService;
+import name.ncg777.maths.Combination;
 import name.ncg777.maths.Matrix;
+import name.ncg777.maths.enumerations.MixedRadixEnumeration;
+import name.ncg777.maths.music.pcs12.Pcs12;
+import name.ncg777.maths.sequences.Sequence;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -19,6 +26,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.awt.event.ActionEvent;
@@ -33,11 +41,14 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.JTextField;
 
 import java.text.SimpleDateFormat;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.TreeSet;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
@@ -54,9 +65,105 @@ import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 
 import org.apache.commons.text.StringEscapeUtils;
+import org.jsoup.parser.Parser;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class AIMailExchangeSimulator {
+    class Tools {
+        @Tool("Fetches a markdown version of an HTML web page or any plain text web resource as is from a url.")
+        public static String fetchUrl(@P("The url to fetch") String url) {
+            WebDriver driver = new ChromeDriver();
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            driver.get(url);
+            wait.until(
+        	    (ExpectedCondition<Boolean>) wd ->  
+        	    	((JavascriptExecutor)wd)
+        	    		.executeScript("return document.readyState")
+        	    			.equals("complete"));
+            var src = driver.getPageSource();
+            driver.close();
+            boolean isMd = false;
+            try {
+		var doc = Parser.htmlParser().parseInput(src,(new URI(url)).getHost());
+		for(var e : doc.select("a[href]")) {
+		    e.attr("href", e.absUrl("href"));
+		    e.text(e.text().trim());
+		}
+		var converter = new CopyDown();
+		src = converter.convert(doc.toString());
+		isMd = true;
+	    } catch (URISyntaxException e) {
+		// TODO Auto-generated catch block
+		e.printStackTrace();
+	    }
+            var fn = "./archive/fetched_url_" + MainService.getTimeStamp(new Date()) + "_" + url.replaceAll(":","").replaceAll("[/%&?]", "_") + (isMd ? ".md" : "");
+            PrintWriter pw;
+            try {
+        	pw = new PrintWriter(fn);
+        	pw.print(src);
+        	pw.flush();
+        	pw.close();
+        	MainService.ingestSingleFile(fn);
+            } catch (FileNotFoundException e) {
+        	;
+            }
+            return src;
+        }
 
+        @Tool("Get pitches in pitch class set identified by Forte number.")
+        public static String getForteNumberPitches(String forteNumber) {
+            var f = Pcs12.parseForte(forteNumber);
+            if(f==null)return null;
+            return f.asSequence().toString();
+            
+        }
+        @Tool("Get Forte number from pitch set.")
+        public static String getForteNumberFromPitchSequence(@P("A string representing a set of pitches as an integer sequence s of k numbers s_i with k <= 12 and 0 <= s_i <= 11.") String pitches) {
+            var s = Sequence.parse(pitches);
+            if(s==null)return null;
+            Set<Integer> set = new TreeSet<Integer>();
+            set.addAll(s);
+            return Pcs12.identify(new Combination(12,set)).toForteNumberString();
+        }
+        @Tool("Get interval vector associated with Forte number.")
+        public static String getForteNumberIntervalVector(@P("The forte number, with or without the transposition part, that is 'N-O' or 'N-O.T' where N is an integer for the number of notes, O is the order of the pitch class set and T is the optional zero-padded transposition integer where 00 <= T < 12, for example 7-35 or 7-35.11.") String forteNumber) {
+            if(!forteNumber.contains(".")) forteNumber = forteNumber + ".00";
+            var f = Pcs12.parseForte(forteNumber);
+            if(f==null)return null;
+            return f.getIntervalVector().toString();
+        }
+        
+        @Tool("Enumerate a mixed base of dimension k, that is the n k-tuples of elements from each set base_i, with the integers considered as sets, and n being the product of the k base_i integers.")
+        public static String enumerateMixedBase(@P("The integer base as a string of k space separated positive non-zero integers base_i with 0 <= i < k.") String base) {
+            var b = Sequence.parse(base);
+            var mre = new MixedRadixEnumeration(b);
+            StringBuilder sb = new StringBuilder();
+            while(mre.hasMoreElements()) sb.append((new Sequence(mre.nextElement())).toString()+"\n");
+            return sb.toString();
+        }
+        
+        @Tool("List all the contacts.")
+        public static String getContactList() {
+            var names = personas.getColumn(0);
+            var emails = personas.getColumn(1);
+            
+            Matrix<String> o = new Matrix<>(names.size(),2);
+            o.setColumn(0, names);
+            o.setColumn(1, emails);
+            return "NAME,EMAIL\n" + o.toString((s) -> s);
+        }
+        
+        @Tool("Send a message to a contact.")
+        public void sendMessageToContact(String contactName, String messageSubject, String plainTextMessage) {
+            var p = getPersonaFromName(contactName);
+            if(p==null) return;
+            interact(plainTextMessage, messageSubject, null, getAgentPersona(), p, true);
+        }
+    }
     private JFrame frmAIMailExchangeSimulator;
 
     /**
@@ -247,6 +354,8 @@ public class AIMailExchangeSimulator {
     private void interact(String str, String subject, String lastEmail, List<String> userPersona, List<String> agentPersona, boolean thenSwapped) {
 	new Thread(() -> {
 	    endisable(false);
+	    comboUserPersona.setSelectedItem(userPersona.get(0));
+	    comboAgentPersona.setSelectedItem(agentPersona.get(0));
 	    var now = new Date();
 	    
 	    var mail = (
@@ -277,7 +386,7 @@ public class AIMailExchangeSimulator {
 			userPersona.get(2),
 			agentPersona.get(0),
 			agentPersona.get(1),
-			agentPersona.get(2))
+			agentPersona.get(2), new Tools())
 			.chat(mail);
 	    } catch(Exception e) {
 		JOptionPane.showMessageDialog(
