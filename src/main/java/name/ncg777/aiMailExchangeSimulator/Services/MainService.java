@@ -1,21 +1,28 @@
 package name.ncg777.aiMailExchangeSimulator.Services;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Set;
+import java.util.TimeZone;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ComparisonChain;
 
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -36,6 +43,9 @@ import dev.langchain4j.service.V;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
+import name.ncg777.maths.Combination;
+import name.ncg777.maths.music.pcs12.Pcs12;
+import name.ncg777.maths.sequences.Sequence;
 
 public class MainService {
 
@@ -123,73 +133,180 @@ public class MainService {
     public static String oneShotChat(String model, String str) {
 	return getModelBuilder(model).build().generate(str); 
     }
-    private record AssistantId(String sender, String senderEmail, String other, String otherEmail) implements Comparable<AssistantId> {
-
-	@Override
-	public int compareTo(AssistantId o) {
-	    return ComparisonChain.start()
-		    .compare(sender, o.sender).compare(senderEmail, o.senderEmail)
-		    .compare(other, o.other).compare(otherEmail, o.otherEmail).result();
-	}
-	
-    };
-    //private static TreeMap<AssistantId, MyLilRAGAssistant> assistants = new TreeMap<AssistantId, MyLilRAGAssistant>();
+    public static String placeholder = "<4B57Y837YNC5Y857VT43TN>";
     public static MyLilRAGAssistant getAssistant(String model, String sender, String senderEmail, String senderBio, String other, String otherEmail, String otherBio) {
-	//var r =  new AssistantId(sender, senderEmail, other, otherEmail);
-	//if (assistants.get(r) != null)
-	//    return assistants.get(r);
-	
-	//assistants.put(r, 
+
 	return AiServices.builder(MyLilRAGAssistant.class).systemMessageProvider(
 		(o) -> "" +
 """
-You are an AI agent designed to assist in solving problems collaboratively with 
-other agents through email exchange and by retrieving relevant information from 
-your memory, your internal knowledge base and your intelligence. You shall 
-answer to the agent with which you are in communication with a multipart email 
-message in MIME format. Your mail shall have 
-Content-Type 'multipart/mixed' with a sound boundary argument. A sound boundary argument
-could be for example 'FROM<FROM>TO<TO>DATE<DATE>', where <FROM>, 
-<TO> and <DATE> are replaced by the from and to email addresses (with the '@' replaced by 'AT') and <DATE> is 
-the date of the reply, all with spaces, colons, commas and punctuation removed. 
-Your reply shall include a verbatim placeholder <PREVIOUSEMAIL> in the last part of 
-your multipart message which shall have content-type 'message/rfc822'. The <PREVIOUSEMAIL> placeholder will be replaced
-by the system with the complete verbatim email that is currently being replied to.
+You are an AI agent designed to analyze email exchanges in MIME format and provide 
+a single continuation to it in the form of a MIME mail template that you will write
+using relevant information from 
+your memory, your internal knowledge base and your intelligence. 
+This exchange may include past exchanges between you and other agents and so you
+should take notice of the context and answer accordingly.
+You shall provide a single email as an answer to to the email exchange.
+The answer you will provide will be a partial email template that won't include the original email 
+that is being replied to. This template will be turned into a valid MIME file after you answer using your answer.
+I repeat that you should absolutely NOT include the mail you are replying to in your MIME mail template answer. 
+Your MIME mail template answer shall have Content-Type 'multipart/mixed' with 
+a sound boundary argument. A sound boundary argument
+could be for example 'boundary_<DATE>', where <DATE> are replaced by  
+date of the reply including seconds, all with spaces, colons, commas and punctuation removed. 
 The final MIME part boundary of your reply which should be suffixed with 2 hyphens (--) is always what 
 should be found on the last line of your answer and should match the boundary you have 
 used to delimitate the parts of your reply. Your 
 answer may also contain other parts in the form of file attachments and you 
-shall provide for each attached file the Content-Type line, the 
+shall provide, for each attached file, the Content-Type line, the 
 file's name on the MIME Content-Disposition line as it should be done, and 
 finally the content of the file in plain text of course. Don't try to encode 
-your files as base64; attach them in plain text. Your answer shall be in valid 
-and well formed MIME format which and respect a certain order, which means to alway begin your answer with the line 
-'MIME-Version: 1.0', followed by the Date line, which should be precisely and 
-just only 1 second after the datetime of the email you are replying to, then should follow the
+your files as base64; attach them in plain text. Your answer shall 
+respect MIME format and provide headers in a certain order. Always begin your 
+answer with the line 'MIME-Version: 1.0', followed by the Date 
+line, which should be precisely and just only 1 second after the datetime of the email you are replying to, then should follow the
 'from' and 'to' lines, with email addresses and names, then should follow a relevant Subject 
 line, followed by the Content-Type line, then the Content-Transfer-Encoding line (only if the content is not multipart)
 and then the content. You must not insert useless extra empty lines; there should be a single empty line between the headers and the content. 
-Your answer will be saved verbatim to file in the knowledge base as an eml file so the format of your answer must follow the MIME
-email format strictly because the eml file needs to be readable by any mail 
-program such as Mozilla Thunderbird or Microsoft Outlook.
+Your reply must also always include a verbatim placeholder <4B57Y837YNC5Y857VT43TN> (with the < and >) as the only content of the last part of 
+your multipart message. This last part of the email shall have content-type 'message/rfc822' and Content-Disposition: attachment with no name.
+It is crucial that the <4B57Y837YNC5Y857VT43TN> placeholder be present and that your message ends the final MIME boundary 
+or your answer will be discarded by the system. Do not replace the <4B57Y837YNC5Y857VT43TN> placeholder 
+with anything else; just provide your answer and not the message you are replying to.
+So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
+the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
+replaced by the potential attachments if there are any.
+
+===BEGIN ANSWER TEMPLATE===
+MIME-Version: 1.0  
+Date: ...
+From: ... 
+To: ...  
+Subject: ...  
+Content-Type: multipart/mixed; boundary="boundary_..."  
+
+--boundary_... 
+Content-Type: text/plain; charset=UTF-8  
+Content-Transfer-Encoding: 7bit  
+
+<CONTENT OF YOUR ANSWER>
+
+--boundary_...  
+
+Content-Type: ...
+Content-Disposition: attachment; filename="..."
+
+<POTENTIAL ATTACHMENT 1>
+
+--boundary_...  
+
+Content-Type: ...
+Content-Disposition: attachment; filename="..."
+
+<POTENTIAL ATTACHMENT 2>
+--boundary_...  
+
+Content-Type: ...
+Content-Disposition: attachment; filename="..."
+
+<POTENTIAL ATTACHMENT ...>
+
+--boundary_...  
+Content-Type: message/rfc822  
+Content-Disposition: attachment  
+
+<4B57Y837YNC5Y857VT43TN>
+--boundary_...--
+===END ANSWER TEMPLATE===
+
+Needless to say, don't include the attachment parts if there are no attachment.
+
+Also, do not answer in markdown format and so do not use the ``` notation unless you are providing a markdown file as attachment.
+
 """ + 
 String.format(
 """
-Your are impersonating %s. Your email address is %s. Your bio is "%s".
-Your are communicating with %s, whose email address is %s and whose bio is "%s". 
+So you are are impersonating %s. Your email address is %s. Your bio is "%s".
+You are communicating with %s, whose email address is %s and whose bio is "%s". 
 Gather some context before you reply; try to remember as much as you can of who
-you are and your recents communications with your interlocutory in order to 
+you are and your recents communications with your interlocutor in order to 
 provide context if necessary. 
 """, other, otherEmail, otherBio, sender, senderEmail, senderBio)
 		)
 		.contentRetriever(getContentRetriever())
 		.chatMemory(MessageWindowChatMemory.withMaxMessages(5))
 		.chatLanguageModel(getOpenAiChatModel(model))
+		.tools(new Tools())
 		.build();
-		//);
-	//return assistants.get(r);
     }
+    public static String getTimeStamp(Date date) {
+	 SimpleDateFormat dateFormatDate = new SimpleDateFormat("yyyyMMdd");
+	 dateFormatDate.setTimeZone(TimeZone.getTimeZone("UTC"));
+	 SimpleDateFormat dateFormatTime = new SimpleDateFormat("HHmmss");
+	 dateFormatTime.setTimeZone(TimeZone.getTimeZone("UTC"));
+	 var o = dateFormatDate.format(date) + "T" + dateFormatTime.format(date) + "Z";
+	 return o;
+	 
+    }
+    static class Tools {
 
+        @Tool("Fetch an http or https url link.")
+        String fetchUrl(String url) {
+            HttpClient client = HttpClient.newHttpClient();
+
+            HttpRequest request;
+	    try {
+		request = HttpRequest.newBuilder()
+		        .uri(new URI(url))
+		        .GET()
+		        .build();
+	    } catch (URISyntaxException e) {
+		return null;
+	    }
+            HttpResponse<String> response;
+	    try {
+		response = client.send(request, HttpResponse.BodyHandlers.ofString());
+	    } catch (IOException|InterruptedException e) {
+		return null;
+	    }
+            if(response.statusCode() == 200) {
+        	var fn = "./archive/fetched_url_" + getTimeStamp(new Date()) + "_" + url.replaceAll(":","").replaceAll("/", "_");
+        	PrintWriter pw;
+		try {
+		    pw = new PrintWriter(fn);
+		    pw.print(response.body());
+	            pw.flush();
+	            pw.close();
+	            ingestSingleFile(fn);
+		} catch (FileNotFoundException e) {
+		    ;
+		}
+        	
+                return response.body();
+            }
+            else {return null;}
+        }
+
+        @Tool("Get pitches in pitch class set identified by Forte number.")
+        String getForteNumberPitches(String forteNumber) {
+            var f = Pcs12.parseForte(forteNumber);
+            if(f==null)return null;
+            return f.asSequence().toString();
+        }
+        @Tool("Get Forte number from pitches integer sequence s of k numbers s_i with k < 12 and 0 <= s_i <= 11.")
+        String getForteNumberFromPitchSequence(String pitches) {
+            var s = Sequence.parse(pitches);
+            if(s==null)return null;
+            Set<Integer> set = new TreeSet<Integer>();
+            set.addAll(s);
+            return Pcs12.identify(new Combination(12,set)).toForteNumberString();
+        }
+        @Tool("Get interval vector associated with Forte number.")
+        String getForteNumberIntervalVector(String forteNumber) {
+            var f = Pcs12.parseForte(forteNumber);
+            if(f==null)return null;
+            return f.getIntervalVector().toString();
+        }
+    }
     private static File toIngest = new File("./toIngest");
     private static File ingested = new File("./ingested");
 

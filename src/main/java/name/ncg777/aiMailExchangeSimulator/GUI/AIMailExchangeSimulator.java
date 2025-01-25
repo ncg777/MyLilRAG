@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
@@ -77,15 +76,7 @@ public class AIMailExchangeSimulator {
 
     private JTextArea textAreaInput;
     private JTextArea textAreaOutput;
-    private static String getTimeStamp(Date date) {
-	 SimpleDateFormat dateFormatDate = new SimpleDateFormat("yyyyMMdd");
-	 dateFormatDate.setTimeZone(TimeZone.getTimeZone("UTC"));
-	 SimpleDateFormat dateFormatTime = new SimpleDateFormat("HHmmss");
-	 dateFormatTime.setTimeZone(TimeZone.getTimeZone("UTC"));
-	 var o = dateFormatDate.format(date) + "T" + dateFormatTime.format(date) + "Z";
-	 return o;
-	 
-    }
+    
     private static String getTimeStampMail(Date date) {
 	 SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z");
 	 var o = dateFormat.format(date);
@@ -104,9 +95,7 @@ public class AIMailExchangeSimulator {
     }
     private static List<File> attachments = new ArrayList<File>();
     private static String getBoundary(String from, String to, Date date) {
-	String o = "FROM" + from.toLowerCase() + 
-		"TO" + to.toLowerCase()+ 
-		"DATE" + getTimeStampMail(date).toLowerCase();
+	String o = "boundary_"+ getTimeStampMail(date).toLowerCase();
 	o = o.replaceAll("(,|:|\\.|\s)", "").replaceAll("@", "AT");
 	
 	return o;
@@ -229,7 +218,7 @@ public class AIMailExchangeSimulator {
 	this.lastEmail = mail;
 	this.textAreaOutput.setText(mail);
     }
-    private static String nonFileCharsRegex = "[<>:;?!]";
+    private static String nonFileCharsRegex = "[<>:;?!/]";
     private JaggedList<String> getUserPersona() {return getPersonaFromName(comboUserPersona.getSelectedItem().toString());}
     private JaggedList<String> getAgentPersona() {return getPersonaFromName(comboAgentPersona.getSelectedItem().toString());}
     private void interact(String str) {
@@ -242,7 +231,7 @@ public class AIMailExchangeSimulator {
 	    var up = swap ? getAgentPersona() : getUserPersona();
 	    var ap = swap ? getUserPersona() : getAgentPersona();
 	    var now = new Date();
-	    var fn = "./archive/" + getTimeStamp(now) + " FROM " + up.get(1).getValue() + " TO " + ap.get(1).getValue()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
+	    var fn = "./archive/" + MainService.getTimeStamp(now) + " FROM " + up.get(1).getValue() + " TO " + ap.get(1).getValue()+" SUBJECT " + textSubject.getText().replaceAll(nonFileCharsRegex, "") + ".eml";
 	    
 	    var mail = (
 		    (str == null) ? lastEmail : 
@@ -275,7 +264,11 @@ public class AIMailExchangeSimulator {
 	    calendar.setTime(now);
 	    calendar.add(Calendar.SECOND, 1); // Add 1 second
 	    var ans = answer.content();
-	    ans = ans.replace("<PREVIOUSEMAIL>", mail.replace("MIME-Version: 1.0", "").trim());
+	    if(!ans.contains(MainService.placeholder)) {
+		System.out.println(ans);
+		throw new RuntimeException("The AI ain't cooperating.");
+	    }
+	    ans = ans.replace(MainService.placeholder, mail);
 	    // Get the updated date
 	    now = calendar.getTime();
 	    ans = ans.trim();
@@ -283,7 +276,7 @@ public class AIMailExchangeSimulator {
 		ans = ans.substring(ans.indexOf("\n")+1).trim();
 	    }
 	    while(ans.endsWith("```")) {
-		ans = ans.substring(0,ans.length()-3).trim();
+		ans = ans.substring(0,ans.lastIndexOf("`")-3).trim();
 	    }
 	    
 	    var boundary_index = ans.indexOf("Content-Type: multipart/mixed; boundary=\"");
@@ -295,7 +288,7 @@ public class AIMailExchangeSimulator {
 	    if(provided_date.startsWith("Date: ")) {
 		ans  = ans.replace(provided_date, "Date: " + getTimeStampMail(now));
 	    }
-	    fn = "./archive/" + getTimeStamp(now) + 
+	    fn = "./archive/" + MainService.getTimeStamp(now) + 
 		    " FROM " + ap.get(1).getValue() + 
 		    " TO " + up.get(1).getValue() +
 		    " SUBJECT " + getSubjectFromMail(ans).replaceAll(nonFileCharsRegex, "").trim() + ".eml";
