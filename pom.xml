@@ -45,7 +45,7 @@
 		<dependency>
 			<groupId>name.ncg777</groupId>
 			<artifactId>name.ncg777</artifactId>
-			<version>20250126T0000Z</version>
+			<version>20250126T0117Z</version>
 		</dependency>
 		<dependency>
 			<groupId>dev.langchain4j</groupId>
