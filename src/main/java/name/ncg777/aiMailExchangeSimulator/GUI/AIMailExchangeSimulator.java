@@ -102,7 +102,7 @@ public class AIMailExchangeSimulator {
 		// TODO Auto-generated catch block
 		e.printStackTrace();
 	    }
-            var fn = "./archive/fetched_url_" + MainService.getTimeStamp(new Date()) + "_" + url.replaceAll(":","").replaceAll("[/%&?]", "_") + (isMd ? ".md" : "");
+            var fn = "./archive/fetched_url_" + getTimeStamp(new Date()) + "_" + url.replaceAll(":","").replaceAll("[/%&?]", "_") + (isMd ? ".md" : "");
             PrintWriter pw;
             try {
         	pw = new PrintWriter(fn);
@@ -205,21 +205,21 @@ public class AIMailExchangeSimulator {
 	 var o = dateFormat.format(date);
 	 return o;
    }
-    private static String getTimeStampTable(Date date) {
+    private static String getTimeStamp(Date date) {
 	var sdf = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
         sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
 	return sdf.format(date);
-  }
+    }
     public static void saveEmail(
 	    Date date,
 	    String from,
 	    String to,
 	    String subject,
             String mail) throws FileNotFoundException {
-	String[] newRow = {getTimeStampTable(date),from,to,subject};
+	String[] newRow = {getTimeStamp(date),from,to,subject};
 	((DefaultTableModel)tableMails.getModel()).addRow(newRow);
 	var r = new ArrayList<String>();
-	r.add(getTimeStampTable(date));
+	r.add(getTimeStamp(date));
 	r.add(from);
 	r.add(to);
 	r.add(subject);

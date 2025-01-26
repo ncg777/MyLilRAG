@@ -239,16 +239,6 @@ provide context if necessary.
 		.tools(tools)
 		.build();
     }
-    public static String getTimeStamp(Date date) {
-	 SimpleDateFormat dateFormatDate = new SimpleDateFormat("yyyyMMdd");
-	 dateFormatDate.setTimeZone(TimeZone.getTimeZone("UTC"));
-	 SimpleDateFormat dateFormatTime = new SimpleDateFormat("HHmmss");
-	 dateFormatTime.setTimeZone(TimeZone.getTimeZone("UTC"));
-	 var o = dateFormatDate.format(date) + "T" + dateFormatTime.format(date) + "Z";
-	 return o;
-	 
-    }
-    
     
     private static File toIngest = new File("./toIngest");
     private static File ingested = new File("./ingested");
