@@ -1,14 +1,14 @@
 package name.ncg777.aiMailExchangeSimulator.Services;
 
+import java.io.BufferedReader;
 import java.io.File;
 
 import java.io.IOException;
-
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.URL;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -89,6 +89,7 @@ public class MainService {
     public static String[] getEndPoints() {
 	List<String> o = new ArrayList<String>();
 	o.add("http://localhost:11434/v1");
+	o.add("http://localhost:1234/v1");
 	if(System.getenv().containsKey("OPENAI_API_KEY")) o.add("https://api.openai.com/v1"); 
 	if(System.getenv().containsKey("GROQ_API_KEY")) o.add("https://api.groq.com/openai/v1");;
 	return o.toArray(new String[0]);
@@ -103,24 +104,56 @@ public class MainService {
     }
     
     public static String[] getModels() throws JsonParseException, IOException, InterruptedException, URISyntaxException {
-	HttpClient client = HttpClient.newHttpClient();
+	StringBuilder response = new StringBuilder();
 	
-        var requestBuilder = HttpRequest.newBuilder().uri(new URI(baseUrl+"/models")).timeout(Duration.ofSeconds(10));
-        if(getAPIKey()!=null) requestBuilder = requestBuilder.header("Authorization", "Bearer "+getAPIKey());
-        var request = requestBuilder.GET().build();
-        var response = client.send(request, HttpResponse.BodyHandlers.ofString());
-        client.close();
-        if(response.statusCode() == 200) {
-            var b = new JsonFactoryBuilder().build();
-            var str = response.body();
-            var p = b.setCodec(new ObjectMapper()).createParser(str).readValueAsTree();
-            p=p.get("data");
-            var l = new ArrayList<String>();
-            for(int i=0;i<p.size();i++) l.add(p.get(i).get("id").toString().replaceAll("\"",""));
-            l.sort((x,y) -> x.compareTo(y));
-            return l.toArray(new String[0]);
+        try {
+            // Create the URL object
+            URL url = URI.create(baseUrl+"/models").toURL();
+
+            // Open the connection
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+            // Set the HTTP method to GET
+            connection.setRequestMethod("GET");
+
+            // Set any headers if required (optional)
+            connection.setRequestProperty("Accept", "application/json");
+            if(getAPIKey() != null) {
+        	connection.setRequestProperty("Authorization" , "Bearer " + getAPIKey());
+            }
+            // Get the response code
+            int responseCode = connection.getResponseCode();
+
+            // Read the response
+            BufferedReader reader;
+            if (responseCode == HttpURLConnection.HTTP_OK) { // success
+                reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+            } else {
+        	connection.disconnect();
+        	return new String[0];
+            }
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                response.append(line);
+            }
+            reader.close();
+
+            // Close the connection
+            connection.disconnect();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new String[0];
         }
-        else {return new String[0];}
+	
+        var b = new JsonFactoryBuilder().build();
+        var str = response.toString();
+        var p = b.setCodec(new ObjectMapper()).createParser(str).readValueAsTree();
+        p=p.get("data");
+        var l = new ArrayList<String>();
+        for(int i=0;i<p.size();i++) l.add(p.get(i).get("id").toString().replaceAll("\"",""));
+        l.sort((x,y) -> x.compareTo(y));
+        return l.toArray(new String[0]);
     }
     public static OpenAiChatModel getOpenAiChatModel(String modelName) {
 	return getModelBuilder(modelName).build();
