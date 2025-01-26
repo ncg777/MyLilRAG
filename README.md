@@ -11,8 +11,14 @@ with, the agent persona, handled by AI. You can also simulate a round of
 exchanges by clicking AI Follow-up; this will generate 2 mail interactions, 
 leaving it back to your turn.
 
-Generated mail are saved in EML MIME format in an archive folder and are also 
-saved in a local neo4j vector database so that when AI writes the mail, it may 
+You may see the list of mails in the system on the left, and the currently
+selected mail as plaintext on the right.
+
+You may input a message to send to the agent persona and the selected message
+will be sent along as context.
+
+Generated mail are saved in as strings in a JSON file and also 
+in a local neo4j vector database so that when AI writes the mail, it may 
 retrieve the entire history of mail exchanges in the system by vectors.
 
 You may also just ingest documents in the vector database by putting them in the
@@ -20,7 +26,6 @@ toIngest folder; they will be ingested and archived upon the startup of the prog
 
 The Agent also has a tool to fetch any URL that will convert HTML files to 
 Markdown. Downloaded files will be saved in the archive folder.
-
 
 ## Features
 
