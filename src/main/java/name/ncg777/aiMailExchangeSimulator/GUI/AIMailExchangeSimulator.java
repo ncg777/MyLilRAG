@@ -117,7 +117,8 @@ public class AIMailExchangeSimulator {
         }
 
         @Tool("Get pitches in pitch class set identified by Forte number.")
-        public static String getForteNumberPitches(String forteNumber) {
+        public static String getForteNumberPitches(@P("The forte number, with or without the transposition part, that is 'N-O' or 'N-O.T' where N is an integer for the number of notes, O is the order of the pitch class set and T is the optional zero-padded transposition integer where 00 <= T < 12, for example 7-35 or 7-35.11.") String forteNumber) {
+            if(!forteNumber.contains(".")) forteNumber = forteNumber.trim() + ".00";
             var f = Pcs12.parseForte(forteNumber);
             if(f==null)return null;
             return f.asSequence().toString();
@@ -159,7 +160,7 @@ public class AIMailExchangeSimulator {
             return "NAME,EMAIL\n" + o.toString((s) -> s);
         }
         
-        @Tool("Send a message to a contact.")
+        @Tool("Send an email to a contact.")
         public void sendMessageToContact(String contactName, String messageSubject, String plainTextMessage) {
             var p = getPersonaFromName(contactName);
             if(p==null) return;
@@ -275,7 +276,7 @@ public class AIMailExchangeSimulator {
         mimeEmail.append("--" + boundary + "\r\n");
         mimeEmail.append("Content-Type: text/plain; charset=UTF-8\r\n");
 	mimeEmail.append("Content-Transfer-Encoding: 7bit\r\n\r\n");
-        mimeEmail.append(content + "\r\n\r\n");
+        mimeEmail.append(content + "\r\n");
         
         for(var f : attachments) {
     	    mimeEmail.append("--" + boundary + "\r\n");

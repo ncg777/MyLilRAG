@@ -9,13 +9,10 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
-import java.util.TimeZone;
 import java.util.function.Consumer;
 
 import com.fasterxml.jackson.core.JsonFactoryBuilder;
@@ -87,7 +84,7 @@ public class MainService {
     private static String getAPIKey() {
 	if(baseUrl.contains("groq")) return System.getenv("GROQ_API_KEY");
 	else if(baseUrl.contains("openai")) return System.getenv("OPENAI_API_KEY");
-	else return "DUMMY";
+	else return null;
     }
     public static String[] getEndPoints() {
 	List<String> o = new ArrayList<String>();
@@ -102,18 +99,17 @@ public class MainService {
 		.baseUrl(baseUrl)
 		.timeout(Duration.ZERO)
 		.modelName(modelName)
-		.apiKey(getAPIKey());
+		.apiKey(getAPIKey() == null ? "DUMMY" : getAPIKey());
     }
     
     public static String[] getModels() throws JsonParseException, IOException, InterruptedException, URISyntaxException {
 	HttpClient client = HttpClient.newHttpClient();
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(new URI(baseUrl+"/models"))
-                .header("Authorization", "Bearer "+getAPIKey())
-                .GET()
-                .build();
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+	
+        var requestBuilder = HttpRequest.newBuilder().uri(new URI(baseUrl+"/models")).timeout(Duration.ofSeconds(10));
+        if(getAPIKey()!=null) requestBuilder = requestBuilder.header("Authorization", "Bearer "+getAPIKey());
+        var request = requestBuilder.GET().build();
+        var response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        client.close();
         if(response.statusCode() == 200) {
             var b = new JsonFactoryBuilder().build();
             var str = response.body();
