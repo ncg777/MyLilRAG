@@ -160,7 +160,7 @@ public class AIMailExchangeSimulator {
             return "NAME,EMAIL\n" + o.toString((s) -> s);
         }
         
-        @Tool("Send an email to a contact.")
+        @Tool("Send an email message to another agent contact.")
         public void sendMessageToContact(String contactName, String messageSubject, String plainTextMessage) {
             var p = getPersonaFromName(contactName);
             if(p==null) return;
@@ -405,6 +405,10 @@ public class AIMailExchangeSimulator {
 	    var ans = answer.content();
 	    if(!ans.contains(MainService.placeholder)) {
  		throw new RuntimeException("The AI ain't cooperating.");
+	    }
+	    
+	    if(ans.contains("<think>") && ans.contains("<answer>")) {
+		ans = ans.substring(ans.indexOf("<answer>")+8,ans.indexOf("</answer>")).trim();
 	    }
 	    ans = ans.replace(MainService.placeholder, mail);
 	    // Get the updated date
