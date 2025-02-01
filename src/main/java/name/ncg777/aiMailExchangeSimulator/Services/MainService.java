@@ -19,6 +19,8 @@ import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import dev.langchain4j.rag.query.router.DefaultQueryRouter;
+import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -31,7 +33,10 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel.OpenAiChatModelBuilder;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.UserMessage;
@@ -39,6 +44,8 @@ import dev.langchain4j.service.V;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 
 
 public class MainService {
@@ -96,6 +103,7 @@ public class MainService {
     }
     private static String baseUrl = "http://localhost:11434/v1";
     private static OpenAiChatModelBuilder getModelBuilder(String modelName) {
+        
 	return (new OpenAiChatModelBuilder())
 		.baseUrl(baseUrl)
 		.timeout(Duration.ZERO)
@@ -173,6 +181,20 @@ public class MainService {
 	    String otherBio,
 	    Object tools) {
 
+	WebSearchEngine webSearchEngine = TavilyWebSearchEngine.builder()
+                .apiKey(System.getenv("TAVILY_API_KEY"))
+                .build();
+
+        ContentRetriever webSearchContentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(webSearchEngine)
+                .maxResults(15)
+                .build();
+        QueryRouter queryRouter = new DefaultQueryRouter(getContentRetriever(), webSearchContentRetriever);
+        
+        DefaultRetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(queryRouter)
+                .build();
+        
 	return AiServices.builder(RAGAssistant.class).systemMessageProvider(
 		(o) -> "" +
 """
@@ -262,8 +284,8 @@ you are and your recents communications with your interlocutor in order to
 provide context if necessary. 
 """, other, otherEmail, otherBio, sender, senderEmail, senderBio)
 		)
-		.contentRetriever(getContentRetriever())
-		.chatMemory(MessageWindowChatMemory.withMaxMessages(5))
+		.retrievalAugmentor(retrievalAugmentor)
+		.chatMemory(MessageWindowChatMemory.withMaxMessages(100))
 		.chatLanguageModel(getOpenAiChatModel(model))
 		.tools(tools)
 		.build();
