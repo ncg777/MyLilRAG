@@ -181,19 +181,7 @@ public class MainService {
 	    String otherBio,
 	    Object tools) {
 
-	WebSearchEngine webSearchEngine = TavilyWebSearchEngine.builder()
-                .apiKey(System.getenv("TAVILY_API_KEY"))
-                .build();
-
-        ContentRetriever webSearchContentRetriever = WebSearchContentRetriever.builder()
-                .webSearchEngine(webSearchEngine)
-                .maxResults(15)
-                .build();
-        QueryRouter queryRouter = new DefaultQueryRouter(getContentRetriever(), webSearchContentRetriever);
-        
-        DefaultRetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
-                .queryRouter(queryRouter)
-                .build();
+	
         
 	return AiServices.builder(RAGAssistant.class).systemMessageProvider(
 		(o) -> "" +
@@ -284,7 +272,7 @@ you are and your recents communications with your interlocutor in order to
 provide context if necessary. 
 """, other, otherEmail, otherBio, sender, senderEmail, senderBio)
 		)
-		.retrievalAugmentor(retrievalAugmentor)
+		.contentRetriever(getContentRetriever())
 		.chatMemory(MessageWindowChatMemory.withMaxMessages(100))
 		.chatLanguageModel(getOpenAiChatModel(model))
 		.tools(tools)

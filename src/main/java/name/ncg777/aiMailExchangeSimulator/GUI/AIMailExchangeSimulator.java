@@ -34,6 +34,7 @@ import java.nio.file.Files;
 import java.awt.event.ActionEvent;
 
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
 import javax.swing.LayoutStyle.ComponentPlacement;
@@ -73,6 +74,7 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import javax.swing.JList;
 
 public class AIMailExchangeSimulator {
     class Tools {
@@ -159,13 +161,6 @@ public class AIMailExchangeSimulator {
             o.setColumn(1, emails);
             return "NAME,EMAIL\n" + o.toString((s) -> s);
         }
-        
-        @Tool("Send an email message to another agent contact.")
-        public void sendMessageToContact(String contactName, String messageSubject, String plainTextMessage) {
-            var p = getPersonaFromName(contactName);
-            if(p==null) return;
-            interact(plainTextMessage, messageSubject, null, getAgentPersona(), p, true);
-        }
     }
     private JFrame frmAIMailExchangeSimulator;
 
@@ -213,10 +208,10 @@ public class AIMailExchangeSimulator {
     }
     public static void saveEmail(
 	    Date date,
-	    String from,
-	    String to,
-	    String subject,
             String mail) throws FileNotFoundException {
+	String from = getFromFromMail(mail);
+	String to = getToFromMail(mail);
+	String subject = getSubjectFromMail(mail);
 	String[] newRow = {getTimeStamp(date),from,to,subject};
 	((DefaultTableModel)tableMails.getModel()).addRow(newRow);
 	var r = new ArrayList<String>();
@@ -231,7 +226,7 @@ public class AIMailExchangeSimulator {
         MainService.ingestString(mail);
     }
     private static List<File> attachments = new ArrayList<File>();
-    private static String getBoundary(String from, String to, Date date) {
+    private static String getBoundary(Date date) {
 	String o = "boundary_"+ getTimeStampMail(date).toLowerCase();
 	o = o.replaceAll("(,|:|\\.|\s)", "").replaceAll("@", "AT");
 	
@@ -242,15 +237,13 @@ public class AIMailExchangeSimulator {
 	    String subject,
             String senderName, 
             String senderEmail, 
-            String destinationName, 
-            String destinationEmail, 
+            List<List<String>> destinations,
             String content) {return generateMIMEEmail(
         	    now,
         	    subject,
                     senderName, 
                     senderEmail, 
-                    destinationName, 
-                    destinationEmail, 
+                    destinations, 
                     content,null);
             }
     public static String generateMIMEEmail(
@@ -258,8 +251,7 @@ public class AIMailExchangeSimulator {
 	    String subject,
             String senderName, 
             String senderEmail, 
-            String destinationName, 
-            String destinationEmail, 
+            List<List<String>> destinations, 
             String content,
             String asAReplyTo) {
         StringBuilder mimeEmail = new StringBuilder();
@@ -267,10 +259,10 @@ public class AIMailExchangeSimulator {
         mimeEmail.append("MIME-Version: 1.0\r\n");
         mimeEmail.append("Date: ").append(timestamp).append("\r\n");
         mimeEmail.append("From: ").append(senderName).append(" <").append(senderEmail).append(">\r\n");
-        mimeEmail.append("To: ").append(destinationName).append(" <").append(destinationEmail).append(">\r\n");
+        mimeEmail.append("To: ").append(Joiner.on("; ").join(destinations.stream().map(p -> p.get(0) + " <" + p.get(1) + ">").toList())+ "\r\n");
         mimeEmail.append("Subject: ").append(subject + "\r\n");
     
-        var boundary = getBoundary(senderEmail, destinationEmail, now);
+        var boundary = getBoundary(now);
         mimeEmail.append("Content-Type: multipart/mixed; boundary=\"" + boundary + "\"\r\n\r\n");
         
         mimeEmail.append("--" + boundary + "\r\n");
@@ -312,19 +304,37 @@ public class AIMailExchangeSimulator {
 	return o;
     }
     private void endisable(boolean v) {
-	btnAIFollowUp.setEnabled(v);
 	btnGen.setEnabled(v);
 	textAreaInput.setEnabled(v);
 	comboEndpoints.setEnabled(v);
 	comboModel.setEnabled(v);
 	btnAttachFiles.setEnabled(v);
 	btnClearFiles.setEnabled(v);
-	btnClear.setEnabled(v && this.lastEmail() != null);
 	textSubject.setEnabled(v);
-	
+	tableMails.setEnabled(v);
 	comboUserPersona.setEnabled(v);
-	comboAgentPersona.setEnabled(v);
     }
+    
+    private static String getFromFromMail(String mail) {
+   	var pat = Pattern.compile("From: (?<from>.+)", 0);
+   	var matcher = pat.matcher(mail);
+
+   	for(var match :matcher.results().toList()) {
+   	    return match.group("from");
+
+   	}
+   	return "";
+       }
+    private static String getToFromMail(String mail) {
+   	var pat = Pattern.compile("To: (?<to>.+)", 0);
+   	var matcher = pat.matcher(mail);
+
+   	for(var match :matcher.results().toList()) {
+   	    return match.group("to");
+
+   	}
+   	return "";
+       }
     private static String getSubjectFromMail(String mail) {
 	var pat = Pattern.compile("Subject: (?<subject>.+)", 0);
 	var matcher = pat.matcher(mail);
@@ -335,7 +345,7 @@ public class AIMailExchangeSimulator {
 	}
 	return "";
     }
-    
+    JButton btnClear;
     private void setSelectedMail(String mail) {
 	if(mail == null || mail.isBlank()) {
 	    textSubject.setText("");
@@ -349,16 +359,15 @@ public class AIMailExchangeSimulator {
     }
     //private static String nonFileCharsRegex = "[<>:;?!/]";
     private List<String> getUserPersona() {return getPersonaFromName(comboUserPersona.getSelectedItem().toString());}
-    private List<String> getAgentPersona() {return getPersonaFromName(comboAgentPersona.getSelectedItem().toString());}
-    private void interact(String str, String subject, String lastEmail, List<String> userPersona, List<String> agentPersona) {
+
+    private void interact(String str, String subject, String lastEmail, List<String> userPersona, List<List<String>> agentPersona) {
 	interact(str, subject, lastEmail, userPersona, agentPersona, false);
     }
-    
-    private void interact(String str, String subject, String lastEmail, List<String> userPersona, List<String> agentPersona, boolean thenSwapped) {
+    private int interactLock = 0;
+    private void interact(String str, String subject, String lastEmail, List<String> userPersona, List<List<String>> agentPersonas, boolean thenSwapped) {
 	new Thread(() -> {
 	    endisable(false);
-	    comboUserPersona.setSelectedItem(userPersona.get(0));
-	    comboAgentPersona.setSelectedItem(agentPersona.get(0));
+	    interactLock++;
 	    var now = new Date();
 	    
 	    var mail = (
@@ -366,100 +375,95 @@ public class AIMailExchangeSimulator {
 			generateMIMEEmail(now, 
 				subject, 
 				userPersona.get(0), userPersona.get(1), 
-				agentPersona.get(0), agentPersona.get(1), 
+				agentPersonas, 
 				str, lastEmail));
 	    
 	    if(str != null) {
 		try {
 		    saveEmail(
-			    now,
-			    userPersona.get(1),
-		            agentPersona.get(1),
-		            subject, 
+			    now, 
 		            mail);
 		} catch (FileNotFoundException e) {
 		    e.printStackTrace();
 		}
 	    }
-	    Result<String> answer;
-	    try {
-		answer = MainService.getAssistant(comboModel.getSelectedItem().toString(),
-			userPersona.get(0),
-			userPersona.get(1),
-			userPersona.get(2),
-			agentPersona.get(0),
-			agentPersona.get(1),
-			agentPersona.get(2), new Tools())
-			.chat(mail);
-	    } catch(Exception e) {
-		JOptionPane.showMessageDialog(
-			frmAIMailExchangeSimulator, 
-			"There was an error fetching completions.",
-			"Error", JOptionPane.ERROR_MESSAGE, null);
-		return;
+	    int k=1;
+	    for(var agentPersona : agentPersonas) {
+		Result<String> answer;
+		try {
+		    answer = MainService.getAssistant(comboModel.getSelectedItem().toString(),
+			    userPersona.get(0),
+			    userPersona.get(1),
+			    userPersona.get(2),
+			    agentPersona.get(0),
+			    agentPersona.get(1),
+			    agentPersona.get(2), new Tools())
+			    .chat(mail);
+		} catch(Exception e) {
+		    JOptionPane.showMessageDialog(
+			    frmAIMailExchangeSimulator, 
+			    "There was an error fetching completions.",
+			    "Error", JOptionPane.ERROR_MESSAGE, null);
+		    return;
+		}
+		// Use Calendar to add a second
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(now);
+		calendar.add(Calendar.SECOND, k++);
+		var ans = answer.content();
+		if(!ans.contains(MainService.placeholder)) {
+		    throw new RuntimeException("The AI ain't cooperating.");
+		}
+
+		if(ans.contains("<think>") && ans.contains("<answer>")) {
+		    ans = ans.substring(ans.indexOf("<answer>")+8,ans.indexOf("</answer>")).trim();
+		}
+		ans = ans.replace(MainService.placeholder, mail);
+		// Get the updated date
+		now = calendar.getTime();
+		ans = ans.trim();
+		if(ans.startsWith("```")) {
+		    ans = ans.substring(ans.indexOf("\n")+1).trim();
+		}
+		while(ans.endsWith("```")) {
+		    ans = ans.substring(0,ans.lastIndexOf("`")-3).trim();
+		}
+
+		var boundary_index = ans.indexOf("Content-Type: multipart/mixed; boundary=\"");
+		if(boundary_index > 0) {
+		    var provided_boundary = ans.substring(boundary_index+41, ans.indexOf('"', boundary_index+42));
+		    ans = ans.replaceAll(provided_boundary, getBoundary(now));
+		}
+		var provided_date = ans.split("\n")[1];
+		if(provided_date.startsWith("Date: ")) {
+		    ans  = ans.replace(provided_date, "Date: " + getTimeStampMail(now));
+		}
+
+		this.setSelectedMail(ans);
+
+		try {
+		    saveEmail(
+			    now,
+			    ans);
+		} catch (FileNotFoundException e) {
+		    e.printStackTrace();
+		}
+
+		attachments.clear();
+		textAreaFiles.setText("");
+		textAreaInput.setText("");
+		if(thenSwapped) {interact(null, null, textAreaOutput.getText(), agentPersona,List.of(userPersona), false);}
+		
 	    }
-	    // Use Calendar to add a second
-	    Calendar calendar = Calendar.getInstance();
-	    calendar.setTime(now);
-	    calendar.add(Calendar.SECOND, 1); // Add 1 second
-	    var ans = answer.content();
-	    if(!ans.contains(MainService.placeholder)) {
- 		throw new RuntimeException("The AI ain't cooperating.");
-	    }
-	    
-	    if(ans.contains("<think>") && ans.contains("<answer>")) {
-		ans = ans.substring(ans.indexOf("<answer>")+8,ans.indexOf("</answer>")).trim();
-	    }
-	    ans = ans.replace(MainService.placeholder, mail);
-	    // Get the updated date
-	    now = calendar.getTime();
-	    ans = ans.trim();
-	    if(ans.startsWith("```")) {
-		ans = ans.substring(ans.indexOf("\n")+1).trim();
-	    }
-	    while(ans.endsWith("```")) {
-		ans = ans.substring(0,ans.lastIndexOf("`")-3).trim();
-	    }
-	    
-	    var boundary_index = ans.indexOf("Content-Type: multipart/mixed; boundary=\"");
-	    if(boundary_index > 0) {
-		var provided_boundary = ans.substring(boundary_index+41, ans.indexOf('"', boundary_index+42));
-		ans = ans.replaceAll(provided_boundary, getBoundary(agentPersona.get(1),userPersona.get(1),now));
-	    }
-	    var provided_date = ans.split("\n")[1];
-	    if(provided_date.startsWith("Date: ")) {
-		ans  = ans.replace(provided_date, "Date: " + getTimeStampMail(now));
-	    }
-	    
-	    this.setSelectedMail(ans);
-	    
-	    try {
-		saveEmail(
-			now,
-			agentPersona.get(1),
-			userPersona.get(1),
-			getSubjectFromMail(ans),
-			ans);
-	    } catch (FileNotFoundException e) {
-		e.printStackTrace();
-	    }
-	    	    
-	    
-	    attachments.clear();
-	    textAreaFiles.setText("");
-	    textAreaInput.setText("");
-	    if(thenSwapped) {interact(null, null, textAreaOutput.getText(), agentPersona,userPersona, false);}
-	    else { endisable(true);}
+	    if(--interactLock == 0) endisable(true);
 	}).start();
     }
     private JButton btnGen;
-    JButton btnAIFollowUp;
     private JLabel lblNewLabel_6;
     private JTextField textSubject;
     private JLabel lblNewLabel_8;
     private JComboBox<String> comboModel;
     private JComboBox<String> comboEndpoints;
-    private JButton btnClear;
     private static DefaultComboBoxModel<String> getComboModel() {
 	try {
 	    return new DefaultComboBoxModel<>(MainService.getModels());
@@ -484,15 +488,7 @@ public class AIMailExchangeSimulator {
 	}
 	return o.toArray(new String[0]);
     }
-    private void clearSubject() {
-	this.textAreaOutput.setText("");
-	tableMails.getSelectionModel().clearSelection();
-	textSubject.setText(null);
-	endisable(true);
-    }
     private JComboBox<String> comboUserPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
-    private JComboBox<String> comboAgentPersona = new JComboBox<>(new DefaultComboBoxModel<>(getPersonaNames()));
-    private JTextArea textAreaFiles;
     final static String PREF_ENDPOINT = "endpoint";
     final static String PREF_MODEL = "model";
     private JSplitPane splitPane;
@@ -545,6 +541,7 @@ public class AIMailExchangeSimulator {
     private static String[] mailsColumns = new String[] {
 		"date", "from", "to", "subject"
 	};
+    private JList<String> listTo;
     private static DefaultTableModel getMailsTableModel() {
 	return new DefaultTableModel(
 		mails.rowCount() == 0 ? new String[0][4] : (String[][])mails.toJaggedList(s -> s).toArray(),
@@ -558,12 +555,20 @@ public class AIMailExchangeSimulator {
 	    
 	};
     }
-  
+    
+    private List<List<String>> getSelectedPersona() {
+	return listTo.getSelectedValuesList().stream().map(s -> getPersonaFromName(s)).toList();
+    }
+    
+    private DefaultListModel<String> toListModel = new DefaultListModel<String>();
+    private JScrollPane scrollPane_2;
+    private JTextArea textAreaFiles;
     private void initialize() {
 	frmAIMailExchangeSimulator = new JFrame();
+	frmAIMailExchangeSimulator.setResizable(false);
 	frmAIMailExchangeSimulator.getContentPane().setPreferredSize(new Dimension(550, 550));
 	frmAIMailExchangeSimulator.setTitle("AIMailExchangeSimulator");
-	frmAIMailExchangeSimulator.setBounds(100, 100, 984, 625);
+	frmAIMailExchangeSimulator.setBounds(100, 100, 951, 625);
 	frmAIMailExchangeSimulator.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 	JScrollPane scrollPane_1 = new JScrollPane();
@@ -583,28 +588,16 @@ public class AIMailExchangeSimulator {
 			    textSubject.getText(),
 			    lastEmail(),
 			    getUserPersona(),
-			    getAgentPersona());
+			    getSelectedPersona());
 		}
 	    }
 	});
 
 	JLabel lblNewLabel = new JLabel("User message:");
 	
-	btnAIFollowUp = new JButton("Generate AI Follow-up");
-	btnAIFollowUp.addActionListener(new ActionListener() {
-		public void actionPerformed(ActionEvent e) {
-		    interact(
-			    null, 
-			    null,
-			    lastEmail(),
-			    getAgentPersona(),
-			    getUserPersona(), true);
-		}
-	});
+	JLabel lblNewLabel_1 = new JLabel("From:");
 	
-	JLabel lblNewLabel_1 = new JLabel("User Persona:");
-	
-	JLabel lblNewLabel_2 = new JLabel("Agent Persona:");
+	JLabel lblNewLabel_2 = new JLabel("To:");
 	
 	lblNewLabel_6 = new JLabel("Subject:");
 	
@@ -628,13 +621,6 @@ public class AIMailExchangeSimulator {
 	comboModel.addActionListener(new ActionListener() {
 		public void actionPerformed(ActionEvent e) {
 		    saveModelPref();
-		}
-	});
-	
-	btnClear = new JButton("Clear");
-	btnClear.addActionListener(new ActionListener() {
-		public void actionPerformed(ActionEvent e) {
-		    clearSubject();
 		}
 	});
 	
@@ -668,13 +654,22 @@ public class AIMailExchangeSimulator {
 	
 	loadUserPrefs();
 	
-	comboUserPersona.setSelectedIndex(0);
-	
-	comboAgentPersona.setSelectedIndex(1);;
-	
-	JScrollPane scrollPane_2 = new JScrollPane();
+	comboUserPersona.setSelectedIndex(0);;
 	
 	splitPane = new JSplitPane();
+	
+	JScrollPane scrollPane_4 = new JScrollPane();
+	
+	btnClear = new JButton("Clear");
+	btnClear.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent e) {
+		    textSubject.setText("");
+		    textAreaOutput.setText("");
+		}
+	});
+	btnClear.setEnabled(false);
+	
+	scrollPane_2 = new JScrollPane();
 	
 	GroupLayout groupLayout = new GroupLayout(frmAIMailExchangeSimulator.getContentPane());
 	groupLayout.setHorizontalGroup(
@@ -683,67 +678,69 @@ public class AIMailExchangeSimulator {
 				.addContainerGap()
 				.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
 					.addGroup(groupLayout.createSequentialGroup()
-						.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 166, GroupLayout.PREFERRED_SIZE)
-						.addContainerGap(792, Short.MAX_VALUE))
-					.addGroup(groupLayout.createSequentialGroup()
 						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-							.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-								.addComponent(lblNewLabel, GroupLayout.DEFAULT_SIZE, 958, Short.MAX_VALUE)
-								.addGroup(groupLayout.createSequentialGroup()
+							.addComponent(lblNewLabel, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 1010, Short.MAX_VALUE)
+							.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
+								.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
+									.addGroup(groupLayout.createSequentialGroup()
+										.addComponent(lblNewLabel_6, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
+										.addPreferredGap(ComponentPlacement.RELATED)
+										.addComponent(textSubject, GroupLayout.PREFERRED_SIZE, 701, GroupLayout.PREFERRED_SIZE)
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 92, GroupLayout.PREFERRED_SIZE)
+										.addGap(115))
+									.addGroup(groupLayout.createSequentialGroup()
+										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
+											.addComponent(lblNewLabel_1, GroupLayout.PREFERRED_SIZE, 89, GroupLayout.PREFERRED_SIZE)
+											.addComponent(lblNewLabel_8, GroupLayout.PREFERRED_SIZE, 98, GroupLayout.PREFERRED_SIZE)
+											.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 64, GroupLayout.PREFERRED_SIZE))
+										.addPreferredGap(ComponentPlacement.RELATED)
+										.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
+											.addComponent(comboEndpoints, 0, 230, Short.MAX_VALUE)
+											.addComponent(comboModel, 0, 230, Short.MAX_VALUE)
+											.addComponent(comboUserPersona, 0, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+										.addPreferredGap(ComponentPlacement.RELATED)
+										.addComponent(lblNewLabel_2, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(scrollPane_4, GroupLayout.PREFERRED_SIZE, 341, GroupLayout.PREFERRED_SIZE)
+										.addGap(289)))
+								.addGap(18))
+							.addGroup(Alignment.LEADING, groupLayout.createParallelGroup(Alignment.TRAILING, false)
+								.addComponent(scrollPane_1, Alignment.LEADING, 0, 0, Short.MAX_VALUE)
+								.addComponent(btnGen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+								.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
 									.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-										.addGroup(groupLayout.createSequentialGroup()
-											.addComponent(lblNewLabel_6, GroupLayout.PREFERRED_SIZE, 70, GroupLayout.PREFERRED_SIZE)
-											.addPreferredGap(ComponentPlacement.RELATED)
-											.addComponent(textSubject, GroupLayout.DEFAULT_SIZE, 764, Short.MAX_VALUE)
-											.addPreferredGap(ComponentPlacement.UNRELATED)
-											.addComponent(btnClear, GroupLayout.PREFERRED_SIZE, 92, GroupLayout.PREFERRED_SIZE))
-										.addGroup(groupLayout.createSequentialGroup()
-											.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
-												.addComponent(lblNewLabel_2, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-												.addComponent(lblNewLabel_1, GroupLayout.DEFAULT_SIZE, 89, Short.MAX_VALUE))
-											.addPreferredGap(ComponentPlacement.RELATED)
-											.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-												.addComponent(comboAgentPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE)
-												.addComponent(comboUserPersona, GroupLayout.PREFERRED_SIZE, 225, GroupLayout.PREFERRED_SIZE))
-											.addPreferredGap(ComponentPlacement.RELATED)
-											.addGroup(groupLayout.createParallelGroup(Alignment.LEADING, false)
-												.addComponent(lblNewLabel_8, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-												.addComponent(lblNewLabel_7, GroupLayout.DEFAULT_SIZE, 64, Short.MAX_VALUE))
-											.addPreferredGap(ComponentPlacement.RELATED)
-											.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-												.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)
-												.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 230, GroupLayout.PREFERRED_SIZE)))
-										.addComponent(splitPane, GroupLayout.DEFAULT_SIZE, 940, Short.MAX_VALUE))
-									.addGap(18))
-								.addGroup(groupLayout.createSequentialGroup()
-									.addComponent(btnAttachFiles)
+										.addComponent(btnClearFiles)
+										.addComponent(btnAttachFiles))
 									.addPreferredGap(ComponentPlacement.RELATED)
-									.addComponent(btnClearFiles)
-									.addPreferredGap(ComponentPlacement.RELATED)
-									.addComponent(scrollPane_2, GroupLayout.DEFAULT_SIZE, 760, Short.MAX_VALUE)))
-							.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING)
-								.addComponent(btnGen, Alignment.LEADING, GroupLayout.DEFAULT_SIZE, 938, Short.MAX_VALUE)
-								.addComponent(scrollPane_1)))
-						.addGap(20))))
+									.addComponent(scrollPane_2, GroupLayout.PREFERRED_SIZE, 794, GroupLayout.PREFERRED_SIZE))))
+						.addGap(98))
+					.addGroup(Alignment.LEADING, groupLayout.createSequentialGroup()
+						.addComponent(splitPane, GroupLayout.PREFERRED_SIZE, 886, GroupLayout.PREFERRED_SIZE)
+						.addGap(222)))
+				.addContainerGap())
 	);
 	groupLayout.setVerticalGroup(
 		groupLayout.createParallelGroup(Alignment.LEADING)
 			.addGroup(groupLayout.createSequentialGroup()
 				.addContainerGap()
-				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-					.addComponent(lblNewLabel_1)
-					.addComponent(comboUserPersona, GroupLayout.PREFERRED_SIZE, 25, GroupLayout.PREFERRED_SIZE)
-					.addComponent(lblNewLabel_8)
-					.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
-				.addPreferredGap(ComponentPlacement.RELATED)
 				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
-					.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-						.addComponent(lblNewLabel_2, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE)
-						.addComponent(comboAgentPersona, GroupLayout.PREFERRED_SIZE, 25, GroupLayout.PREFERRED_SIZE)
-						.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE))
-					.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE))
+					.addGroup(groupLayout.createSequentialGroup()
+						.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
+							.addComponent(lblNewLabel_8)
+							.addComponent(comboEndpoints, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE)
+							.addComponent(lblNewLabel_2, GroupLayout.PREFERRED_SIZE, 18, GroupLayout.PREFERRED_SIZE))
+						.addGap(6)
+						.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
+							.addComponent(lblNewLabel_7, GroupLayout.PREFERRED_SIZE, 17, GroupLayout.PREFERRED_SIZE)
+							.addComponent(comboModel, GroupLayout.PREFERRED_SIZE, 23, GroupLayout.PREFERRED_SIZE))
+						.addGap(5)
+						.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
+							.addComponent(lblNewLabel_1)
+							.addComponent(comboUserPersona, GroupLayout.PREFERRED_SIZE, 25, GroupLayout.PREFERRED_SIZE)))
+					.addComponent(scrollPane_4, GroupLayout.PREFERRED_SIZE, 82, GroupLayout.PREFERRED_SIZE))
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(splitPane, GroupLayout.PREFERRED_SIZE, 195, GroupLayout.PREFERRED_SIZE)
+				.addComponent(splitPane, GroupLayout.PREFERRED_SIZE, 154, GroupLayout.PREFERRED_SIZE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
 					.addComponent(textSubject, GroupLayout.PREFERRED_SIZE, 19, GroupLayout.PREFERRED_SIZE)
@@ -752,20 +749,27 @@ public class AIMailExchangeSimulator {
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(lblNewLabel)
 				.addPreferredGap(ComponentPlacement.RELATED)
-				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 139, Short.MAX_VALUE)
+				.addComponent(scrollPane_1, GroupLayout.DEFAULT_SIZE, 154, Short.MAX_VALUE)
 				.addPreferredGap(ComponentPlacement.RELATED)
 				.addComponent(btnGen)
-				.addPreferredGap(ComponentPlacement.RELATED)
+				.addGap(18)
 				.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 					.addGroup(groupLayout.createSequentialGroup()
-						.addGroup(groupLayout.createParallelGroup(Alignment.BASELINE)
-							.addComponent(btnAttachFiles)
-							.addComponent(btnClearFiles))
-						.addGap(9)
-						.addComponent(btnAIFollowUp, GroupLayout.PREFERRED_SIZE, 22, GroupLayout.PREFERRED_SIZE))
-					.addComponent(scrollPane_2, GroupLayout.PREFERRED_SIZE, 54, GroupLayout.PREFERRED_SIZE))
-				.addGap(39))
+						.addGap(25)
+						.addComponent(btnClearFiles))
+					.addComponent(btnAttachFiles)
+					.addComponent(scrollPane_2, GroupLayout.PREFERRED_SIZE, 82, GroupLayout.PREFERRED_SIZE))
+				.addContainerGap())
 	);
+	
+	textAreaFiles = new JTextArea();
+	scrollPane_2.setViewportView(textAreaFiles);
+	if(toListModel.isEmpty()) {
+	    toListModel.addAll(List.of(getPersonaNames()));
+	}
+	listTo = new JList<String>(toListModel);
+	
+	scrollPane_4.setViewportView(listTo);
 	
 	JScrollPane scrollPane_3 = new JScrollPane();
 	splitPane.setLeftComponent(scrollPane_3);
@@ -848,16 +852,13 @@ public class AIMailExchangeSimulator {
 		textAreaOutput.setLineWrap(true);
 		textAreaOutput.setText("");
 		splitPane.setDividerLocation(450);
-	
-	textAreaFiles = new JTextArea();
-	textAreaFiles.setEditable(false);
-	scrollPane_2.setViewportView(textAreaFiles);
 	frmAIMailExchangeSimulator.getContentPane().setLayout(groupLayout);
 	MainService.setPrintToOutput((s) -> printToOutput(s));
 	
 	new Thread(() -> {
 	    endisable(false);
 	    MainService.ingest();
+	    textAreaOutput.setText("");
 	    endisable(true);
 
 	}).start();
