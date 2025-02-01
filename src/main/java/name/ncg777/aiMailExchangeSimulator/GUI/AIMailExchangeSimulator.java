@@ -308,6 +308,8 @@ public class AIMailExchangeSimulator {
 	textAreaInput.setEnabled(v);
 	comboEndpoints.setEnabled(v);
 	comboModel.setEnabled(v);
+	listTo.setEnabled(v);
+	textAreaOutput.setEnabled(v);
 	btnAttachFiles.setEnabled(v);
 	btnClearFiles.setEnabled(v);
 	textSubject.setEnabled(v);
