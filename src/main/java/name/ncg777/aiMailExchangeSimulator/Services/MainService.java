@@ -19,8 +19,6 @@ import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import dev.langchain4j.rag.query.router.DefaultQueryRouter;
-import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -33,10 +31,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel.OpenAiChatModelBuilder;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel.OpenAiEmbeddingModelBuilder;
-import dev.langchain4j.rag.DefaultRetrievalAugmentor;
-import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.rag.content.retriever.WebSearchContentRetriever;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.UserMessage;
@@ -44,12 +39,9 @@ import dev.langchain4j.service.V;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
-import dev.langchain4j.web.search.WebSearchEngine;
-import dev.langchain4j.web.search.tavily.TavilyWebSearchEngine;
 
 
 public class MainService {
-
     
     public static interface RAGAssistant {
 	@UserMessage("{{message}}")
@@ -184,13 +176,20 @@ public class MainService {
 	
         
 	return AiServices.builder(RAGAssistant.class).systemMessageProvider(
-		(o) -> "" +
+		(o) -> String.format(
 """
 You are an AI agent designed to analyze email exchanges in MIME format and provide 
 a single continuation to it in the form of a MIME mail template that you will write
 using relevant information from 
 your memory, your internal knowledge base and your intelligence. 
-This exchange may include past exchanges between you and other agents and so you
+You are are impersonating %s. Your email address is %s. Your bio is "%s".
+You are communicating with %s, whose email address is %s and whose bio is "%s". 
+Gather some context before you reply; try to remember as much as you can of who
+you are and your recents communications with your interlocutor in order to 
+provide context if necessary. 
+""", other, otherEmail, otherBio, sender, senderEmail, senderBio) +
+"""
+The exchange in question may include past exchanges between you and other agents and so you
 should take notice of the context and answer accordingly.
 You shall provide a single email as an answer to to the email exchange.
 The answer you will provide will be a partial email template that won't include the original email 
@@ -217,11 +216,12 @@ your multipart message. This last part of the email shall have content-type 'mes
 It is crucial that the the <4B57Y837YNC5Y857VT43TN> placeholder be present as demanded and
 that the last 2 characters of your output be -- on the same line as the final boundary.
 
-So to summarize, you answer should always follow the following template with the ... replaced with the appropriate strings,
+Don't include attachment parts if there is no attachment.
+Do not answer in markdown format and so do not use the ``` notation unless you are providing a markdown file as attachment.
+So to summarize, you answer should respect the following template, with the ... replaced with the appropriate strings,
 the <CONTENT OF YOUR ANSWER> replaced with your answer and the <POTENTIAL ATTACHMENT i> 
-replaced by the potential attachments if there are any.
-
-===BEGIN OUTPUT TEMPLATE===
+replaced by the potential attachments if there are any:
+```
 MIME-Version: 1.0  
 Date: ...
 From: ... 
@@ -256,22 +256,8 @@ Content-Disposition: attachment
 
 <4B57Y837YNC5Y857VT43TN>
 --boundary_X--
-===END OUTPUT TEMPLATE===
-
-Needless to say, don't include the attachment parts if there are no attachment.
-
-Also, do not answer in markdown format and so do not use the ``` notation unless you are providing a markdown file as attachment.
-
-""" + 
-String.format(
-"""
-So you are are impersonating %s. Your email address is %s. Your bio is "%s".
-You are communicating with %s, whose email address is %s and whose bio is "%s". 
-Gather some context before you reply; try to remember as much as you can of who
-you are and your recents communications with your interlocutor in order to 
-provide context if necessary. 
-""", other, otherEmail, otherBio, sender, senderEmail, senderBio)
-		)
+```
+""")
 		.contentRetriever(getContentRetriever())
 		.chatMemory(MessageWindowChatMemory.withMaxMessages(100))
 		.chatLanguageModel(getOpenAiChatModel(model))

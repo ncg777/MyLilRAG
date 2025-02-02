@@ -417,8 +417,12 @@ public class AIMailExchangeSimulator {
 		    throw new RuntimeException("The AI ain't cooperating.");
 		}
 
-		if(ans.contains("<think>") && ans.contains("<answer>")) {
-		    ans = ans.substring(ans.indexOf("<answer>")+8,ans.indexOf("</answer>")).trim();
+		if(ans.contains("<think>")) {
+		    if(ans.contains("<answer>")) {
+			ans = ans.substring(ans.indexOf("<answer>")+8,ans.indexOf("</answer>")).trim();
+		    } else {
+			ans = ans.substring(ans.indexOf("</think>")+8).trim();
+		    }
 		}
 		ans = ans.replace(MainService.placeholder, mail);
 		// Get the updated date
