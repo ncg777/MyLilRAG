@@ -78,6 +78,7 @@ import javax.swing.JList;
 
 public class AIMailExchangeSimulator {
     class Tools {
+		/*
         @Tool("Fetches a markdown version of an HTML web page or any plain text web resource as is from a url.")
         public static String fetchUrl(@P("The url to fetch") String url) {
             WebDriver driver = new ChromeDriver();
@@ -117,7 +118,7 @@ public class AIMailExchangeSimulator {
             }
             return src;
         }
-
+		*/
         @Tool("Get pitches in pitch class set identified by Forte number.")
         public static String getForteNumberPitches(@P("The forte number, with or without the transposition part, that is 'N-O' or 'N-O.T' where N is an integer for the number of notes, O is the order of the pitch class set and T is the optional zero-padded transposition integer where 00 <= T < 12, for example 7-35 or 7-35.11.") String forteNumber) {
             if(!forteNumber.contains(".")) forteNumber = forteNumber.trim() + ".00";
@@ -379,17 +380,19 @@ public class AIMailExchangeSimulator {
 				userPersona.get(0), userPersona.get(1), 
 				agentPersonas, 
 				str, lastEmail));
-	    
+
 	    if(str != null) {
 		try {
 		    saveEmail(
 			    now, 
-		            mail);
+			    mail);
 		} catch (FileNotFoundException e) {
 		    e.printStackTrace();
 		}
 	    }
-	    int k=1;
+        textAreaInput.setText("");
+	    attachments.clear();
+        textAreaFiles.setText("");
 	    for(var agentPersona : agentPersonas) {
 		Result<String> answer;
 		try {
@@ -411,7 +414,7 @@ public class AIMailExchangeSimulator {
 		// Use Calendar to add a second
 		Calendar calendar = Calendar.getInstance();
 		calendar.setTime(now);
-		calendar.add(Calendar.SECOND, k++);
+		calendar.add(Calendar.SECOND, 1);
 		var ans = answer.content();
 		if(!ans.contains(MainService.placeholder)) {
 		    throw new RuntimeException("The AI ain't cooperating.");
@@ -455,9 +458,7 @@ public class AIMailExchangeSimulator {
 		    e.printStackTrace();
 		}
 
-		attachments.clear();
-		textAreaFiles.setText("");
-		textAreaInput.setText("");
+		
 		if(thenSwapped) {interact(null, null, textAreaOutput.getText(), agentPersona,List.of(userPersona), false);}
 		
 	    }
