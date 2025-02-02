@@ -42,7 +42,7 @@ import dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingStore;
 
 public class MainService {
 
-	public static interface RAGAssistant {
+	public static interface Assistant {
 		@UserMessage("{{message}}")
 		Result<String> chat(@V("message") String message);
 	}
@@ -177,21 +177,16 @@ public class MainService {
 
 	public static String placeholder = "<4B57Y837YNC5Y857VT43TN>";
 
-	public static RAGAssistant getAssistant(String model, String sender, String senderEmail, String senderBio,
+	public static Assistant getAssistant(String model, String sender, String senderEmail, String senderBio,
 			String other, String otherEmail, String otherBio, Object tools) {
 
-		return AiServices.builder(RAGAssistant.class)
+		return AiServices.builder(Assistant.class)
 				.systemMessageProvider((o) -> String.format(
 """
 You are an AI agent designed to analyze email exchanges in MIME format and provide
-a single continuation to it in the form of a MIME mail template that you will write
-using relevant information from
-your memory, your internal knowledge base and your intelligence.
-You are are impersonating %s. Your email address is %s. Your bio is "%s".
-You are communicating with %s, whose email address is %s and whose bio is "%s".
-Gather some context before you reply; try to remember as much as you can of who
-you are and your recents communications with your interlocutor in order to
-provide context if necessary.
+a single continuation to it in the form of a MIME mail template.
+You are are impersonating %s. Your email address is %s. Your bio is: "%s". Play your role well.
+You are communicating with %s, whose email address is %s and whose bio is: "%s". Know who you are communicating with.
 """, other, otherEmail, otherBio, sender, senderEmail, senderBio)
 						+ 
 """
@@ -264,8 +259,11 @@ Content-Disposition: attachment
 --boundary_X--
 ```
 """)
-				.contentRetriever(getContentRetriever()).chatMemory(MessageWindowChatMemory.withMaxMessages(100))
-				.chatLanguageModel(getOpenAiChatModel(model)).tools(tools).build();
+				//.contentRetriever(getContentRetriever())
+				.chatMemory(MessageWindowChatMemory.withMaxMessages(100))
+				.chatLanguageModel(getOpenAiChatModel(model))
+				//.tools(tools)
+				.build();
 	}
 
 	private static File toIngest = new File("./toIngest");

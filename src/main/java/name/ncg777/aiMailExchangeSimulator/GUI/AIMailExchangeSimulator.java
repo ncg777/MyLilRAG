@@ -99,7 +99,7 @@ public class AIMailExchangeSimulator {
 		 * e) { ; } return src; }
 		 */
 		@Tool("Get pitches in pitch class set identified by Forte number.")
-		public static String getForteNumberPitches(
+		public String getForteNumberPitches(
 				@P("The forte number, with or without the transposition part, that is 'N-O' or 'N-O.T' where N is an integer for the number of notes, O is the order of the pitch class set and T is the optional zero-padded transposition integer where 00 <= T < 12, for example 7-35 or 7-35.11.") String forteNumber) {
 			if (!forteNumber.contains("."))
 				forteNumber = forteNumber.trim() + ".00";
@@ -111,7 +111,7 @@ public class AIMailExchangeSimulator {
 		}
 
 		@Tool("Get Forte number from pitch set.")
-		public static String getForteNumberFromPitchSequence(
+		public String getForteNumberFromPitchSequence(
 				@P("A string representing a set of pitches as an integer sequence s of k numbers s_i with k <= 12 and 0 <= s_i <= 11.") String pitches) {
 			var s = Sequence.parse(pitches);
 			if (s == null)
@@ -122,7 +122,7 @@ public class AIMailExchangeSimulator {
 		}
 
 		@Tool("Get interval vector associated with Forte number.")
-		public static String getForteNumberIntervalVector(
+		public String getForteNumberIntervalVector(
 				@P("The forte number, with or without the transposition part, that is 'N-O' or 'N-O.T' where N is an integer for the number of notes, O is the order of the pitch class set and T is the optional zero-padded transposition integer where 00 <= T < 12, for example 7-35 or 7-35.11.") String forteNumber) {
 			if (!forteNumber.contains("."))
 				forteNumber = forteNumber + ".00";
@@ -133,7 +133,7 @@ public class AIMailExchangeSimulator {
 		}
 
 		@Tool("Enumerate a mixed base of dimension k, that is the n k-tuples of elements from each set base_i, with the integers considered as sets, and n being the product of the k base_i integers.")
-		public static String enumerateMixedBase(
+		public String enumerateMixedBase(
 				@P("The integer base as a string of k space separated positive non-zero integers base_i with 0 <= i < k.") String base) {
 			var b = Sequence.parse(base);
 			var mre = new MixedRadixEnumeration(b);
@@ -141,17 +141,6 @@ public class AIMailExchangeSimulator {
 			while (mre.hasMoreElements())
 				sb.append((new Sequence(mre.nextElement())).toString() + "\n");
 			return sb.toString();
-		}
-
-		@Tool("List all the contacts.")
-		public static String getContactList() {
-			var names = personas.getColumn(0);
-			var emails = personas.getColumn(1);
-
-			Matrix<String> o = new Matrix<>(names.size(), 2);
-			o.setColumn(0, names);
-			o.setColumn(1, emails);
-			return "NAME,EMAIL\n" + o.toString((s) -> s);
 		}
 	}
 
@@ -218,7 +207,7 @@ public class AIMailExchangeSimulator {
 		mails.insertRow(0, r);
 		writeMails();
 		tableMails.getSelectionModel().setLeadSelectionIndex(0);
-		MainService.ingestString(mail);
+		//MainService.ingestString(mail);
 	}
 
 	private static List<File> attachments = new ArrayList<File>();
@@ -386,6 +375,7 @@ public class AIMailExchangeSimulator {
 			textAreaInput.setText("");
 			attachments.clear();
 			textAreaFiles.setText("");
+			int k=0;
 			for (var agentPersona : agentPersonas) {
 				Result<String> answer;
 				try {
@@ -447,6 +437,13 @@ public class AIMailExchangeSimulator {
 				if (thenSwapped) {
 					interact(null, null, textAreaOutput.getText(), agentPersona, List.of(userPersona), false);
 				}
+				if(++k < agentPersonas.size())
+					try {
+						Thread.sleep(60000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 			}
 			if (--interactLock == 0)
 				endisable(true);
@@ -584,7 +581,7 @@ public class AIMailExchangeSimulator {
 		textAreaInput.setLineWrap(true);
 		scrollPane_1.setViewportView(textAreaInput);
 
-		btnGen = new JButton("Send & Generate Reply");
+		btnGen = new JButton("Send & Generate Replies");
 		btnGen.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				if (!textAreaInput.getText().trim().isEmpty()) {
@@ -664,8 +661,7 @@ public class AIMailExchangeSimulator {
 		btnClear = new JButton("Clear");
 		btnClear.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				textSubject.setText("");
-				textAreaOutput.setText("");
+				tableMails.getSelectionModel().clearSelection();
 			}
 		});
 		btnClear.setEnabled(false);
